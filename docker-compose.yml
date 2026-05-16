@@ -2,71 +2,52 @@ services:
   mongodb:
     image: mongo
     container_name: dart-mongodb
-
     restart: unless-stopped
-
     ports:
       - "27017:27017"
-
     volumes:
       - mongodb_data:/data/db
-
     environment:
       MONGO_INITDB_DATABASE: dart_tracker
-
     networks:
       - dart-network
 
   backend:
     build:
-      context: ./apps/backend
-      dockerfile: Dockerfile
-
+      context: .
+      dockerfile: apps/backend/Dockerfile
     container_name: dart-backend
-
     restart: unless-stopped
-
     ports:
       - "3000:3000"
-
     environment:
       NODE_ENV: development
       PORT: 3000
       MONGO_URI: mongodb://mongodb:27017/dart_tracker
       ADMIN_PIN: ${ADMIN_PIN:-1234}
-
     volumes:
-      - ./apps/backend:/app
-      - /app/node_modules
-
+      - ./apps/backend/src:/app/apps/backend/src
+      - ./packages/shared/src:/app/packages/shared/src
     depends_on:
       - mongodb
-
     networks:
       - dart-network
 
   frontend:
     build:
-      context: ./apps/frontend
-      dockerfile: Dockerfile
-
+      context: .
+      dockerfile: apps/frontend/Dockerfile
     container_name: dart-frontend
-
     restart: unless-stopped
-
     ports:
       - "5173:5173"
-
     environment:
       VITE_API_URL: http://localhost:3000
-
     volumes:
-      - ./apps/frontend:/app
-      - /app/node_modules
-
+      - ./apps/frontend/src:/app/apps/frontend/src
+      - ./packages/shared/src:/app/packages/shared/src
     depends_on:
       - backend
-
     networks:
       - dart-network
 
