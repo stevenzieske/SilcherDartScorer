@@ -26,7 +26,13 @@ export enum MatchEventType {
 
 
 export enum UserRole {
+    Admin     = 'admin',
     Spectator = 'spectator',
-    Judge = 'judge',
-    BigScreen = 'bigscreen'
+    Judge     = 'judge',
+    BigScreen = 'bigscreen',
+}
+
+export enum TournamentPhase {
+    League   = 'league',
+    Knockout = 'knockout',
 }

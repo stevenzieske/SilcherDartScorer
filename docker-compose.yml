@@ -33,6 +33,7 @@ services:
       NODE_ENV: development
       PORT: 3000
       MONGO_URI: mongodb://mongodb:27017/dart_tracker
+      ADMIN_PIN: ${ADMIN_PIN:-1234}
 
     volumes:
       - ./apps/backend:/app
