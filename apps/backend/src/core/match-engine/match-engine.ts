@@ -84,8 +84,10 @@ export function applyTurnToLeg(leg: LegState, turn: TurnData): LegState {
 export function rebuildMatchState(match: Match, events: MatchEvent[], rules: MatchRules): MatchState {
     const sorted = [...events].sort((a, b) => a.sequence - b.sequence)
 
+    const startingPlayerIndex = ((match.startingPlayerIndex ?? 0) as 0 | 1)
+
     let legsWon: [number, number] = [0, 0]
-    let currentLeg = initialLegState(1, 0, rules.startingScore)
+    let currentLeg = initialLegState(1, startingPlayerIndex, rules.startingScore)
     let status: MatchState['status'] = 'active'
     let winnerId: string | null = null
 

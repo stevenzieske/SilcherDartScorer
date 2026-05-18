@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { MongooseModule } from '@nestjs/mongoose';
 import envConfig from './config/env.config';
 import { HealthController } from './health.controller';
@@ -8,13 +9,12 @@ import { TournamentsModule } from './modules/tournaments/tournaments.module';
 import { MatchesModule } from './modules/matches/matches.module';
 import { MatchEventsModule } from './modules/match-events/match-events.module';
 import { GatewayModule } from './gateway/gateway.module';
+import { StatsModule } from './modules/stats/stats.module';
 
 @Module({
     imports: [
-        ConfigModule.forRoot({
-            isGlobal: true,
-            load: [envConfig],
-        }),
+        ConfigModule.forRoot({ isGlobal: true, load: [envConfig] }),
+        EventEmitterModule.forRoot(),
 
         MongooseModule.forRootAsync({
             inject: [ConfigService],
@@ -28,7 +28,8 @@ import { GatewayModule } from './gateway/gateway.module';
         TournamentsModule,
         MatchesModule,
         MatchEventsModule,
-        GatewayModule
+        GatewayModule,
+        StatsModule,
     ],
 
     controllers: [HealthController],

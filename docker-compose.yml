@@ -25,6 +25,7 @@ services:
       PORT: 3000
       MONGO_URI: mongodb://mongodb:27017/dart_tracker
       ADMIN_PIN: ${ADMIN_PIN:-1234}
+      HOST_IP: ${HOST_IP:-}
     volumes:
       - ./apps/backend/src:/app/apps/backend/src
       - ./packages/shared/src:/app/packages/shared/src
@@ -42,7 +43,7 @@ services:
     ports:
       - "5173:5173"
     environment:
-      VITE_API_URL: http://localhost:3000
+      BACKEND_URL: http://dart-backend:3000
     volumes:
       - ./apps/frontend/src:/app/apps/frontend/src
       - ./packages/shared/src:/app/packages/shared/src

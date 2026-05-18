@@ -31,6 +31,7 @@ export interface Match {
   judgeId: string | null
   startedAt: string | null
   endedAt: string | null
+  startingPlayerIndex: number
 }
 
 // Emitted via socket after each individual dart — never stored in DB.

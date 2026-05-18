@@ -46,6 +46,10 @@ export class MatchEventsService {
         }).save()
     }
 
+    deleteAllForMatch(matchId: string): Promise<void> {
+        return this.eventModel.deleteMany({ matchId }).exec().then(() => {})
+    }
+
     deleteLastThrow(matchId: string): Promise<MatchEventDocument | null> {
         return this.eventModel
             .findOneAndDelete({

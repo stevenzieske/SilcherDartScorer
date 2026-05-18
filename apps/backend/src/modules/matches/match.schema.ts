@@ -20,6 +20,7 @@ export class MatchModel implements Omit<Match, '_id'> {
     @Prop({ type: String, default: null }) judgeId: string | null
     @Prop({ type: String, default: null }) startedAt: string | null
     @Prop({ type: String, default: null }) endedAt: string | null
+    @Prop({ default: 0 }) startingPlayerIndex: number
 }
 
 export const MatchSchema = SchemaFactory.createForClass(MatchModel)

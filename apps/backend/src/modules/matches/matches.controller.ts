@@ -7,8 +7,8 @@ export class MatchesController {
     constructor(private readonly matchesService: MatchesService) { }
 
     @Get()
-    findAll(@Query('status') status?: string) {
-        return this.matchesService.findAll(status)
+    findAll(@Query('status') status?: string, @Query('tournamentId') tournamentId?: string) {
+        return this.matchesService.findAll(status, tournamentId)
     }
 
     @Get(':id')
@@ -16,10 +16,14 @@ export class MatchesController {
         return this.matchesService.findOne(id)
     }
 
+    @Get(':id/state')
+    getState(@Param('id') id: string) {
+        return this.matchesService.getState(id)
+    }
+
     @Post(':id/start')
-    @UseGuards(AdminGuard)
-    start(@Param('id') id: string) {
-        return this.matchesService.start(id)
+    start(@Param('id') id: string, @Body() body: { startingPlayerIndex?: 0 | 1 }) {
+        return this.matchesService.start(id, body?.startingPlayerIndex ?? 0)
     }
 
     @Post(':id/throw')
@@ -43,8 +47,23 @@ export class MatchesController {
     }
 
     @Post(':id/undo')
-    undo(@Param('id') id: string) {
-        return this.matchesService.undo(id)
+    undo(@Param('id') id: string, @Body() body: {
+        startingScore: number
+        legsToWin: number
+        doubleIn: boolean
+        doubleOut: boolean
+    }) {
+        return this.matchesService.undo(id, {
+            startingScore: body.startingScore,
+            legsToWin: body.legsToWin,
+            doubleIn: body.doubleIn,
+            doubleOut: body.doubleOut,
+        })
+    }
+
+    @Post(':id/reset')
+    reset(@Param('id') id: string) {
+        return this.matchesService.reset(id)
     }
 
     @Patch(':id/pause')
