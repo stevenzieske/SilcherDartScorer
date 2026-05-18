@@ -217,7 +217,20 @@ export class MatchesService {
         const freshEvents = await this.matchEventsService.findAllForMatch(id)
         const freshEventObjs = freshEvents.map(e => ({ ...e.toObject(), _id: e._id.toString() }))
         const freshState = rebuildMatchState({ ...match.toObject(), _id: id }, freshEventObjs, rules)
+        // MATCH_STATE broadcast clears inProgress on all clients first
         this.eventEmitter.emit('match.state.updated', { matchId: id, state: freshState })
+
+        // Re-broadcast the undone darts so all judges see them as in-progress
+        if (turnData?.darts?.length) {
+            const currentIdx = freshState.currentLeg.currentPlayerIndex
+            this.eventEmitter.emit('match.darts.restored', {
+                matchId: id,
+                playerId: turnData.playerId,
+                darts: turnData.darts,
+                remainingBefore: freshState.currentLeg.remaining[currentIdx],
+                legNumber: freshState.currentLeg.legNumber,
+            })
+        }
 
         return { undoneNotations }
     }

@@ -159,6 +159,28 @@ export class TournamentGateway implements OnGatewayInit, OnGatewayDisconnect {
         this.server.to('judges:lobby').emit(EVENTS.MATCH_RESET, payload)
     }
 
+    @OnEvent('match.darts.restored')
+    handleDartsRestored({ matchId, playerId, darts, remainingBefore, legNumber }: {
+        matchId: string; playerId: string; darts: DartThrow[]
+        remainingBefore: number; legNumber: number
+    }) {
+        let running = 0
+        for (let i = 0; i < darts.length; i++) {
+            const dart = darts[i]
+            running += dart.score
+            const payload: DartInProgressData = {
+                matchId, playerId, legNumber,
+                dartIndex: i,
+                dart,
+                dartsThrown: darts.slice(0, i + 1),
+                runningScore: running,
+                runningRemaining: remainingBefore - running,
+            }
+            dartBuffer.set(matchId, payload)
+            this.server.to(`match:${matchId}`).emit(EVENTS.DART_IN_PROGRESS, payload)
+        }
+    }
+
     @OnEvent('tournament.standings.updated')
     handleStandingsUpdated({ tournamentId, standings }: { tournamentId: string; standings: unknown[] }) {
         this.server.to(`tournament:${tournamentId}`).emit(EVENTS.LEAGUE_STANDINGS, standings)
