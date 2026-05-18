@@ -13,6 +13,8 @@ import JudgeMatch from './routes/judge/JudgeMatch'
 import PlayerStatsList from './routes/stats/PlayerStatsList'
 import PlayerStatsPage from './routes/stats/PlayerStatsPage'
 import TournamentStatsPage from './routes/stats/TournamentStatsPage'
+import QuickMatchHub from './routes/quick-match/QuickMatchHub'
+import QuickMatchSetup from './routes/quick-match/QuickMatchSetup'
 
 export default function App() {
     return (
@@ -33,6 +35,8 @@ export default function App() {
                 <Route path="/stats" element={<PlayerStatsList />} />
                 <Route path="/stats/players/:id" element={<PlayerStatsPage />} />
                 <Route path="/stats/tournaments/:id" element={<TournamentStatsPage />} />
+                <Route path="/quick-match" element={<QuickMatchHub />} />
+                <Route path="/quick-match/new" element={<QuickMatchSetup />} />
             </Routes>
         </BrowserRouter>
     )

@@ -10,6 +10,7 @@ import { MatchesModule } from './modules/matches/matches.module';
 import { MatchEventsModule } from './modules/match-events/match-events.module';
 import { GatewayModule } from './gateway/gateway.module';
 import { StatsModule } from './modules/stats/stats.module';
+import { AuthModule } from './modules/auth/auth.module';
 
 @Module({
     imports: [
@@ -30,6 +31,7 @@ import { StatsModule } from './modules/stats/stats.module';
         MatchEventsModule,
         GatewayModule,
         StatsModule,
+        AuthModule,
     ],
 
     controllers: [HealthController],

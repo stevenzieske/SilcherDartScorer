@@ -18,17 +18,25 @@ const MATCH: Match = {
     players: ['p1', 'p2'],
     currentLegNumber: 1,
     legsWon: [0, 0],
+    setsWon: [0, 0],
     winnerId: null,
     judgeId: 'judge-1',
     startedAt: '2024-01-01T00:00:00Z',
     endedAt: null,
+    startingPlayerIndex: 0,
+    isQuickMatch: false,
+    ruleStartingScore: null,
+    ruleDoubleIn: null,
+    ruleDoubleOut: null,
+    ruleLegsToWin: null,
+    ruleSetsToWin: null,
 }
 
 function d(notation: string, score: number): DartThrow {
     return { notation, score }
 }
 
-function makeLeg(remaining: [number, number], playerIndex: 0 | 1, legNumber = 1): LegState {
+function makeLeg(remaining: number[], playerIndex: number, legNumber = 1): LegState {
     return { legNumber, remaining, currentPlayerIndex: playerIndex, startingPlayerIndex: playerIndex, turns: [] }
 }
 

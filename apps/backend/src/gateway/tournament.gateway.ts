@@ -140,18 +140,22 @@ export class TournamentGateway implements OnGatewayInit, OnGatewayDisconnect {
     }
 
     @OnEvent('match.started')
-    handleMatchStarted({ matchId, tournamentId }: { matchId: string; tournamentId: string }) {
+    handleMatchStarted({ matchId, tournamentId }: { matchId: string; tournamentId: string | null }) {
         const payload = { matchId, tournamentId }
-        this.server.to(`tournament:${tournamentId}`).emit(EVENTS.MATCH_STARTED, payload)
+        if (tournamentId) {
+            this.server.to(`tournament:${tournamentId}`).emit(EVENTS.MATCH_STARTED, payload)
+        }
         this.server.to('judges:lobby').emit(EVENTS.MATCH_STARTED, payload)
     }
 
     @OnEvent('match.reset')
-    handleMatchReset({ matchId, tournamentId }: { matchId: string; tournamentId: string }) {
+    handleMatchReset({ matchId, tournamentId }: { matchId: string; tournamentId: string | null }) {
         dartBuffer.delete(matchId)
         const payload = { matchId, tournamentId }
         this.server.to(`match:${matchId}`).emit(EVENTS.MATCH_RESET, payload)
-        this.server.to(`tournament:${tournamentId}`).emit(EVENTS.MATCH_RESET, payload)
+        if (tournamentId) {
+            this.server.to(`tournament:${tournamentId}`).emit(EVENTS.MATCH_RESET, payload)
+        }
         this.server.to('judges:lobby').emit(EVENTS.MATCH_RESET, payload)
     }
 

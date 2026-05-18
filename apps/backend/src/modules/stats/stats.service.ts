@@ -107,6 +107,7 @@ export class StatsService {
         const byTournament = new Map<string, MatchDocument[]>()
         for (const match of allMatches) {
             const tid = match.tournamentId
+            if (!tid) continue  // skip quick matches (no tournament)
             if (!byTournament.has(tid)) byTournament.set(tid, [])
             byTournament.get(tid)!.push(match)
         }

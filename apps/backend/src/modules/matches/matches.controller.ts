@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { MatchesService } from "./matches.service";
 import { AdminGuard } from "../auth/admin.guard";
 
@@ -7,8 +7,38 @@ export class MatchesController {
     constructor(private readonly matchesService: MatchesService) { }
 
     @Get()
-    findAll(@Query('status') status?: string, @Query('tournamentId') tournamentId?: string) {
-        return this.matchesService.findAll(status, tournamentId)
+    findAll(
+        @Query('status') status?: string,
+        @Query('tournamentId') tournamentId?: string,
+        @Query('isQuickMatch') isQuickMatch?: string,
+    ) {
+        const isQuickMatchBool = isQuickMatch !== undefined
+            ? isQuickMatch === 'true'
+            : undefined
+        return this.matchesService.findAll(status, tournamentId, isQuickMatchBool)
+    }
+
+    // NOTE: must be defined BEFORE :id or it will conflict
+    @Get('quick/active')
+    findActiveQuickMatches() {
+        return this.matchesService.findAll('active', undefined, true)
+    }
+
+    @Delete('quick/:id')
+    deleteQuickMatch(@Param('id') id: string) {
+        return this.matchesService.deleteQuickMatch(id)
+    }
+
+    @Post('quick')
+    createQuickMatch(@Body() body: {
+        players: string[]
+        startingScore: number
+        doubleIn: boolean
+        doubleOut: boolean
+        legsToWin: number
+        setsToWin: number
+    }) {
+        return this.matchesService.createQuickMatch(body)
     }
 
     @Get(':id')
@@ -34,6 +64,7 @@ export class MatchesController {
         legsToWin: number
         doubleIn: boolean
         doubleOut: boolean
+        setsToWin?: number
     }) {
         return this.matchesService.submitThrow(
             id,
@@ -43,6 +74,7 @@ export class MatchesController {
             body.legsToWin,
             body.doubleIn,
             body.doubleOut,
+            body.setsToWin ?? 0,
         )
     }
 
@@ -52,12 +84,14 @@ export class MatchesController {
         legsToWin: number
         doubleIn: boolean
         doubleOut: boolean
+        setsToWin?: number
     }) {
         return this.matchesService.undo(id, {
             startingScore: body.startingScore,
             legsToWin: body.legsToWin,
             doubleIn: body.doubleIn,
             doubleOut: body.doubleOut,
+            setsToWin: body.setsToWin ?? 0,
         })
     }
 

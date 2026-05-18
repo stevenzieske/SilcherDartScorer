@@ -18,20 +18,27 @@ export interface TurnData {
 
 export interface Match {
   _id: string
-  tournamentId: string
+  tournamentId: string | null
   leagueRound: number | null  // 1, 2, or 3 for league phase matches — null for knockout
   roundNumber: number | null  // knockout bracket round number — null for league matches
   slotIndex: number | null    // knockout bracket slot index — null for league matches
   board: number | null
   status: MatchStatus
-  players: [string, string]
+  players: string[]
   currentLegNumber: number
-  legsWon: [number, number]
+  legsWon: number[]
+  setsWon: number[]
   winnerId: string | null
   judgeId: string | null
   startedAt: string | null
   endedAt: string | null
   startingPlayerIndex: number
+  isQuickMatch: boolean
+  ruleStartingScore: number | null
+  ruleDoubleIn: boolean | null
+  ruleDoubleOut: boolean | null
+  ruleLegsToWin: number | null
+  ruleSetsToWin: number | null
 }
 
 // Emitted via socket after each individual dart — never stored in DB.

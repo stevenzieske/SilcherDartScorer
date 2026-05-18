@@ -3,12 +3,13 @@ import { MatchEventType, MatchRules } from "@dart/shared";
 
 export function initialLegState(
     legNumber: number,
-    startingPlayerIndex: 0 | 1,
-    startingScore: number
+    startingPlayerIndex: number,
+    startingScore: number,
+    playerCount: number = 2
 ): LegState {
     return {
         legNumber,
-        remaining: [startingScore, startingScore],
+        remaining: Array(playerCount).fill(startingScore),
         currentPlayerIndex: startingPlayerIndex,
         startingPlayerIndex: startingPlayerIndex,
         turns: []
@@ -67,8 +68,8 @@ export function computeTurn(playerId: string, leg: LegState, darts: DartThrow[],
     }
 }
 
-export function applyTurnToLeg(leg: LegState, turn: TurnData): LegState {
-    const newRemaining: [number, number] = [leg.remaining[0], leg.remaining[1]]
+export function applyTurnToLeg(leg: LegState, turn: TurnData, playerCount: number = 2): LegState {
+    const newRemaining = [...leg.remaining]
     newRemaining[leg.currentPlayerIndex] = turn.remainingAfter
 
     return {
@@ -77,40 +78,54 @@ export function applyTurnToLeg(leg: LegState, turn: TurnData): LegState {
         remaining: newRemaining,
         currentPlayerIndex: turn.isCheckout
             ? leg.currentPlayerIndex
-            : leg.currentPlayerIndex === 0 ? 1 : 0,
+            : (leg.currentPlayerIndex + 1) % playerCount,
     }
 }
 
 export function rebuildMatchState(match: Match, events: MatchEvent[], rules: MatchRules): MatchState {
     const sorted = [...events].sort((a, b) => a.sequence - b.sequence)
 
-    const startingPlayerIndex = ((match.startingPlayerIndex ?? 0) as 0 | 1)
+    const playerCount = match.players.length
+    const startingPlayerIndex = match.startingPlayerIndex ?? 0
 
-    let legsWon: [number, number] = [0, 0]
-    let currentLeg = initialLegState(1, startingPlayerIndex, rules.startingScore)
+    let legsWon: number[] = Array(playerCount).fill(0)
+    let legsWonInSet: number[] = Array(playerCount).fill(0)
+    let setsWon: number[] = Array(playerCount).fill(0)
+    let currentLeg = initialLegState(1, startingPlayerIndex, rules.startingScore, playerCount)
     let status: MatchState['status'] = 'active'
     let winnerId: string | null = null
+
+    const setsMode = (rules.setsToWin ?? 0) > 0
 
     for (const event of sorted) {
         switch (event.type) {
             case MatchEventType.Throw:
             case MatchEventType.Bust:
             case MatchEventType.Checkout:
-                currentLeg = applyTurnToLeg(currentLeg, event.data as TurnData)
+                currentLeg = applyTurnToLeg(currentLeg, event.data as TurnData, playerCount)
                 break
 
             case MatchEventType.LegEnded: {
                 const { winnerId: legWinnerId } = event.data as { winnerId: string }
-                const winnerIndex = match.players.indexOf(legWinnerId) as 0 | 1
-                legsWon = [legsWon[0], legsWon[1]]
+                const winnerIndex = match.players.indexOf(legWinnerId)
+                legsWon = [...legsWon]
                 legsWon[winnerIndex]++
+                legsWonInSet = [...legsWonInSet]
+                legsWonInSet[winnerIndex]++
+
+                if (setsMode && legsWonInSet[winnerIndex] >= rules.legsToWin) {
+                    setsWon = [...setsWon]
+                    setsWon[winnerIndex]++
+                    legsWonInSet = Array(playerCount).fill(0)
+                }
+
                 status = 'leg_complete'
                 break
             }
 
             case MatchEventType.LegStarted: {
-                const nextStartingPlayer = (currentLeg.startingPlayerIndex === 0 ? 1 : 0) as 0 | 1
-                currentLeg = initialLegState(currentLeg.legNumber + 1, nextStartingPlayer, rules.startingScore)
+                const nextStartingPlayer = (currentLeg.startingPlayerIndex + 1) % playerCount
+                currentLeg = initialLegState(currentLeg.legNumber + 1, nextStartingPlayer, rules.startingScore, playerCount)
                 status = 'active'
                 break
             }
@@ -132,6 +147,8 @@ export function rebuildMatchState(match: Match, events: MatchEvent[], rules: Mat
         players: match.players,
         currentLeg,
         legsWon,
+        legsWonInSet,
+        setsWon,
         winnerId,
         rules,
     }

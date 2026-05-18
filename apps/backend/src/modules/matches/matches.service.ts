@@ -21,10 +21,11 @@ export class MatchesService {
         private readonly eventEmitter: EventEmitter2,
     ) { }
 
-    async findAll(status?: string, tournamentId?: string): Promise<MatchDocument[]> {
-        const filter: Record<string, string> = {}
+    async findAll(status?: string, tournamentId?: string, isQuickMatch?: boolean): Promise<MatchDocument[]> {
+        const filter: Record<string, unknown> = {}
         if (status) filter.status = status as MatchStatus
         if (tournamentId) filter.tournamentId = tournamentId
+        if (isQuickMatch !== undefined) filter.isQuickMatch = isQuickMatch
         return this.matchModel.find(filter).exec()
     }
 
@@ -36,16 +37,27 @@ export class MatchesService {
 
     async getState(id: string): Promise<MatchState> {
         const match = await this.findOne(id)
-        const tournament = await this.tournamentModel.findById(match.tournamentId).exec()
-        const legsToWin = match.leagueRound !== null
-            ? (tournament?.rules.groupLegsToWin ?? 2)
-            : (tournament?.rules.knockoutLegsToWin ?? 2)
-        const rules: MatchRules = {
+
+        const tournament = match.tournamentId
+            ? await this.tournamentModel.findById(match.tournamentId).exec()
+            : null
+
+        const rules: MatchRules = match.isQuickMatch ? {
+            startingScore: match.ruleStartingScore ?? 501,
+            doubleIn: match.ruleDoubleIn ?? false,
+            doubleOut: match.ruleDoubleOut ?? true,
+            legsToWin: match.ruleLegsToWin ?? 2,
+            setsToWin: match.ruleSetsToWin ?? 0,
+        } : {
             startingScore: tournament?.rules.startingScore ?? 501,
             doubleIn: tournament?.rules.doubleIn ?? false,
             doubleOut: tournament?.rules.doubleOut ?? true,
-            legsToWin,
+            legsToWin: match.leagueRound !== null
+                ? (tournament?.rules.groupLegsToWin ?? 2)
+                : (tournament?.rules.knockoutLegsToWin ?? 2),
+            setsToWin: 0,
         }
+
         const events = await this.matchEventsService.findAllForMatch(id)
         const eventObjs = events.map(e => ({ ...e.toObject(), _id: e._id.toString() }))
         return rebuildMatchState({ ...match.toObject(), _id: id }, eventObjs, rules)
@@ -53,6 +65,36 @@ export class MatchesService {
 
     create(data: Partial<MatchDocument>): Promise<MatchDocument> {
         return new this.matchModel(data).save()
+    }
+
+    async createQuickMatch(data: {
+        players: string[]
+        startingScore: number
+        doubleIn: boolean
+        doubleOut: boolean
+        legsToWin: number
+        setsToWin: number
+    }): Promise<MatchDocument> {
+        const match = await new this.matchModel({
+            tournamentId: null,
+            isQuickMatch: true,
+            status: MatchStatus.Active,
+            players: data.players,
+            legsWon: data.players.map(() => 0),
+            setsWon: data.players.map(() => 0),
+            startedAt: new Date().toISOString(),
+            startingPlayerIndex: 0,
+            ruleStartingScore: data.startingScore,
+            ruleDoubleIn: data.doubleIn,
+            ruleDoubleOut: data.doubleOut,
+            ruleLegsToWin: data.legsToWin,
+            ruleSetsToWin: data.setsToWin,
+        }).save()
+
+        await this.matchEventsService.append(match._id.toString(), 1, MatchEventType.MatchStarted, 'system')
+        this.eventEmitter.emit('match.started', { matchId: match._id.toString(), tournamentId: null })
+
+        return match
     }
 
     async start(id: string, startingPlayerIndex: 0 | 1 = 0): Promise<MatchDocument> {
@@ -80,6 +122,7 @@ export class MatchesService {
         legsToWin: number,
         doubleIn: boolean,
         doubleOut: boolean,
+        setsToWin: number = 0,
     ): Promise<MatchDocument> {
         const match = await this.findOne(id)
         if (match.status !== MatchStatus.Active) {
@@ -87,7 +130,7 @@ export class MatchesService {
         }
 
         const events = await this.matchEventsService.findAllForMatch(id)
-        const rules: MatchRules = { startingScore, doubleIn, doubleOut, legsToWin }
+        const rules: MatchRules = { startingScore, doubleIn, doubleOut, legsToWin, setsToWin }
         const matchObj = { ...match.toObject(), _id: id }
         const eventObjs = events.map(e => ({ ...e.toObject(), _id: e._id.toString() }))
         const state = rebuildMatchState(matchObj, eventObjs, rules)
@@ -97,8 +140,9 @@ export class MatchesService {
             return { notation: n.toUpperCase(), score }
         })
 
+        const currentPlayerIndex = state.currentLeg.currentPlayerIndex
         const turn = computeTurn(
-            state.currentLeg.currentPlayerIndex === 0 ? match.players[0] : match.players[1],
+            match.players[currentPlayerIndex],
             state.currentLeg,
             darts,
             rules
@@ -112,16 +156,28 @@ export class MatchesService {
 
         await this.matchEventsService.append(id, state.currentLeg.legNumber, eventType, judgeId, turn)
 
-
         if (turn.isCheckout) {
-            const legWinner = turn.playerId === match.players[0] ? 0 : 1
+            const legWinner = match.players.indexOf(turn.playerId)
             match.legsWon[legWinner]++
             match.markModified('legsWon')
 
             await this.matchEventsService.append(id, state.currentLeg.legNumber,
                 MatchEventType.LegEnded, 'system', { winnerId: turn.playerId })
 
-            if (match.legsWon[legWinner] >= legsToWin) {
+            // Rebuild after LegEnded to get correct setsWon/legsWonInSet
+            const postLegEvents = await this.matchEventsService.findAllForMatch(id)
+            const postLegEventObjs = postLegEvents.map(e => ({ ...e.toObject(), _id: e._id.toString() }))
+            const postLegState = rebuildMatchState({ ...match.toObject(), _id: id }, postLegEventObjs, rules)
+
+            // Update setsWon on the match document
+            match.setsWon = postLegState.setsWon as unknown as number[]
+            match.markModified('setsWon')
+
+            const matchComplete = (rules.setsToWin ?? 0) > 0
+                ? postLegState.setsWon[legWinner] >= rules.setsToWin!
+                : postLegState.legsWon[legWinner] >= rules.legsToWin
+
+            if (matchComplete) {
                 match.winnerId = turn.playerId
                 match.status = MatchStatus.Completed
                 match.endedAt = new Date().toISOString()
@@ -136,7 +192,7 @@ export class MatchesService {
 
             await match.save()
 
-            if (match.status === MatchStatus.Completed && match.leagueRound !== null) {
+            if (match.status === MatchStatus.Completed && match.leagueRound !== null && match.tournamentId) {
                 await this.updateStandings(match.tournamentId)
             }
         }
@@ -172,15 +228,24 @@ export class MatchesService {
         const tournamentId = match.tournamentId
         await this.matchEventsService.deleteAllForMatch(id)
         match.status = MatchStatus.Pending
-        match.legsWon = [0, 0] as unknown as [number, number]
+        match.legsWon = match.players.map(() => 0) as unknown as number[]
         match.markModified('legsWon')
+        match.setsWon = match.players.map(() => 0) as unknown as number[]
+        match.markModified('setsWon')
         match.winnerId = null
         match.startedAt = null
         match.currentLegNumber = 1
         await match.save()
         this.eventEmitter.emit('match.reset', { matchId: id, tournamentId })
-        if (wasLeagueMatch) await this.updateStandings(tournamentId)
+        if (wasLeagueMatch && tournamentId) await this.updateStandings(tournamentId)
         return match
+    }
+
+    async deleteQuickMatch(id: string): Promise<void> {
+        const match = await this.findOne(id)
+        if (!match.isQuickMatch) throw new BadRequestException('Only quick matches can be deleted')
+        await this.matchEventsService.deleteAllForMatch(id)
+        await this.matchModel.findByIdAndDelete(id).exec()
     }
 
     async pause(id: string): Promise<MatchDocument> {
