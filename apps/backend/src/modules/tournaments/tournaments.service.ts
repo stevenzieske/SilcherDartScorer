@@ -42,7 +42,7 @@ export class TournamentsService {
             throw new BadRequestException('Tournament is not in Draft status')
         }
 
-        const pairings = generateLeagueSchedule(tournament.players)
+        const pairings = generateLeagueSchedule(tournament.players, tournament.rules.matchesPerPlayer ?? 3)
         const roundNumbers = [...new Set(pairings.map(p => p.roundNumber))].sort((a, b) => a - b)
 
         const leagueRounds = roundNumbers.map(roundNumber => ({

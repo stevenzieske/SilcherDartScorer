@@ -13,5 +13,6 @@ exports.CreateTournamentSchema = zod_1.z.object({
         knockoutLegsToWin: zod_1.z.number().int().min(1).default(3),
         boardCount: zod_1.z.number().int().min(1).default(2),
         knockoutSize: zod_1.z.union([zod_1.z.literal(4), zod_1.z.literal(8)]).default(4),
+        matchesPerPlayer: zod_1.z.number().int().min(1).default(3),
     }),
 });

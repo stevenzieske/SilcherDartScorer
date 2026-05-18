@@ -30,7 +30,6 @@ export default function Landing() {
             <div className="flex-1 flex flex-col items-center justify-center p-6 gap-8 animate-slide-up">
                 <div className="text-center">
                     <h1 className="text-4xl font-bold text-white tracking-tight">Silcher Dart Scorer</h1>
-                    <p className="text-gray-500 mt-2 text-sm">Select your role to continue</p>
                 </div>
 
                 <div className="flex flex-col gap-3 w-full max-w-xs">

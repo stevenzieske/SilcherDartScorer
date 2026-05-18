@@ -8,6 +8,7 @@ export interface TournamentRules {
   knockoutLegsToWin: number   // knockout phase — typically 3, configurable to 2
   boardCount: number
   knockoutSize: 4 | 8         // how many players advance from league to knockout
+  matchesPerPlayer: number    // target number of league matches per player
 }
 
 // ─── League phase ────────────────────────────────────────────────────────────

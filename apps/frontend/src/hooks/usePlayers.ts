@@ -7,9 +7,7 @@ export function usePlayers() {
     const { players, setPlayers, getName } = usePlayersStore()
 
     useEffect(() => {
-        if (players.length === 0) {
-            http.get<Player[]>('/players').then(r => setPlayers(r.data)).catch(() => {})
-        }
+        http.get<Player[]>('/players').then(r => setPlayers(r.data)).catch(() => {})
     }, [])
 
     return { players, getName }

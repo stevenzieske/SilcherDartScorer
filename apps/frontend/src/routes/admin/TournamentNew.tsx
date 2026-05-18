@@ -25,6 +25,7 @@ export default function TournamentNew() {
     const [startingScore, setStartingScore] = useState<301 | 501 | 701>(501)
     const [doubleIn, setDoubleIn] = useState(false)
     const [doubleOut, setDoubleOut] = useState(true)
+    const [matchesPerPlayer, setMatchesPerPlayer] = useState('3')
     const [groupLegsToWin, setGroupLegsToWin] = useState('2')
     const [knockoutLegsToWin, setKnockoutLegsToWin] = useState('3')
     const [error, setError] = useState('')
@@ -42,6 +43,8 @@ export default function TournamentNew() {
         if (selectedIds.length < 4) return setError('Select at least 4 players')
         const boards = parseInt(boardCount)
         if (!boards || boards < 1) return setError('Board count must be at least 1')
+        const mpp = parseInt(matchesPerPlayer)
+        if (!mpp || mpp < 1) return setError('Matches per player must be at least 1')
         const lgLegs = parseInt(groupLegsToWin)
         if (!lgLegs || lgLegs < 1) return setError('League legs to win must be at least 1')
         const koLegs = parseInt(knockoutLegsToWin)
@@ -54,6 +57,7 @@ export default function TournamentNew() {
                     startingScore,
                     doubleIn,
                     doubleOut,
+                    matchesPerPlayer: mpp,
                     groupLegsToWin: lgLegs,
                     knockoutLegsToWin: koLegs,
                     boardCount: boards,
@@ -126,8 +130,19 @@ export default function TournamentNew() {
                         </label>
                     </div>
 
-                    {/* Legs to win */}
-                    <div className="grid grid-cols-2 gap-3">
+                    {/* Matches per player + Legs to win */}
+                    <div className="grid grid-cols-3 gap-3">
+                        <label className="flex flex-col gap-1.5">
+                            <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Matches / player</span>
+                            <input
+                                type="number"
+                                inputMode="numeric"
+                                min={1}
+                                value={matchesPerPlayer}
+                                onChange={e => setMatchesPerPlayer(e.target.value)}
+                                className={inputClass}
+                            />
+                        </label>
                         <label className="flex flex-col gap-1.5">
                             <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">League legs</span>
                             <input

@@ -40,18 +40,22 @@ function buildRoundPairings(players: string[]): [string, string][][] {
     return rounds
 }
 
-export function generateLeagueSchedule(playerIds: string[]): LeaguePairing[] {
+// matchesPerPlayer caps the number of rounds generated. Each round every player
+// plays at most once (circle method), so running N rounds ≈ N matches per player.
+// With an odd player count a BYE is inserted; the distribution is still near-uniform.
+export function generateLeagueSchedule(playerIds: string[], matchesPerPlayer: number): LeaguePairing[] {
     if (playerIds.length < 2) throw new Error('Need at least 2 players')
 
     const players = playerIds.length % 2 === 0
         ? [...playerIds]
         : [...playerIds, BYE]
 
-    const rounds = buildRoundPairings(players)
+    const allRounds = buildRoundPairings(players)
+    const maxRounds = Math.min(allRounds.length, Math.max(1, matchesPerPlayer))
     const pairings: LeaguePairing[] = []
 
-    for (let ri = 0; ri < rounds.length; ri++) {
-        const realPairs = rounds[ri].filter(
+    for (let ri = 0; ri < maxRounds; ri++) {
+        const realPairs = allRounds[ri].filter(
             ([a, b]) => a !== BYE && b !== BYE
         )
 

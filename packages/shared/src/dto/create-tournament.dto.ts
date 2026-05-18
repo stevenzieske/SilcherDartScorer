@@ -11,6 +11,7 @@ export const CreateTournamentSchema = z.object({
     knockoutLegsToWin: z.number().int().min(1).default(3),
     boardCount: z.number().int().min(1).default(2),
     knockoutSize: z.union([z.literal(4), z.literal(8)]).default(4),
+    matchesPerPlayer: z.number().int().min(1).default(3),
   }),
 })
 

@@ -7,6 +7,7 @@ export interface TournamentRules {
     knockoutLegsToWin: number;
     boardCount: number;
     knockoutSize: 4 | 8;
+    matchesPerPlayer: number;
 }
 export interface LeagueStanding {
     playerId: string;

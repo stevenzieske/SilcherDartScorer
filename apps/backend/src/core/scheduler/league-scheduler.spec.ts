@@ -23,13 +23,13 @@ describe('generateLeagueSchedule', () => {
 
     describe('validation', () => {
         it('throws for fewer than 2 players', () => {
-            expect(() => generateLeagueSchedule(['p0'])).toThrow()
+            expect(() => generateLeagueSchedule(['p0'], 3)).toThrow()
         })
     })
 
-    describe('4 players (even)', () => {
+    describe('4 players (even), matchesPerPlayer=3', () => {
         const players = ['p0', 'p1', 'p2', 'p3']
-        const result = generateLeagueSchedule(players)
+        const result = generateLeagueSchedule(players, 3)
 
         it('produces 6 pairings (2 per round × 3 rounds)', () => {
             expect(result).toHaveLength(6)
@@ -60,9 +60,22 @@ describe('generateLeagueSchedule', () => {
         })
     })
 
-    describe('6 players (even)', () => {
+    describe('4 players, matchesPerPlayer=2 (fewer rounds than max)', () => {
+        const result = generateLeagueSchedule(['p0', 'p1', 'p2', 'p3'], 2)
+
+        it('produces 4 pairings (2 per round × 2 rounds)', () => {
+            expect(result).toHaveLength(4)
+        })
+
+        it('only rounds 1 and 2 exist', () => {
+            const rounds = new Set(result.map(p => p.roundNumber))
+            expect(rounds).toEqual(new Set([1, 2]))
+        })
+    })
+
+    describe('6 players (even), matchesPerPlayer=3', () => {
         const players = ['p0', 'p1', 'p2', 'p3', 'p4', 'p5']
-        const result = generateLeagueSchedule(players)
+        const result = generateLeagueSchedule(players, 3)
 
         it('produces 9 pairings (3 per round × 3 rounds)', () => {
             expect(result).toHaveLength(9)
@@ -88,9 +101,9 @@ describe('generateLeagueSchedule', () => {
         })
     })
 
-    describe('5 players (odd — adds BYE internally)', () => {
+    describe('5 players (odd — adds BYE internally), matchesPerPlayer=3', () => {
         const players = ['p0', 'p1', 'p2', 'p3', 'p4']
-        const result = generateLeagueSchedule(players)
+        const result = generateLeagueSchedule(players, 3)
 
         it('produces 6 pairings (2 real matches per round × 3 rounds)', () => {
             expect(result).toHaveLength(6)
@@ -129,9 +142,9 @@ describe('generateLeagueSchedule', () => {
         })
     })
 
-    describe('7 players (odd, larger)', () => {
+    describe('7 players (odd, larger), matchesPerPlayer=3', () => {
         const players = ['p0', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6']
-        const result = generateLeagueSchedule(players)
+        const result = generateLeagueSchedule(players, 3)
 
         it('produces 9 pairings (3 real matches per round × 3 rounds)', () => {
             expect(result).toHaveLength(9)
@@ -158,26 +171,38 @@ describe('generateLeagueSchedule', () => {
         })
     })
 
-    describe('2 players (minimum case)', () => {
-        const result = generateLeagueSchedule(['p0', 'p1'])
+    describe('12 players, matchesPerPlayer=3', () => {
+        const players = Array.from({ length: 12 }, (_, i) => `p${i}`)
+        const result = generateLeagueSchedule(players, 3)
 
-        it('produces 3 pairings', () => {
-            expect(result).toHaveLength(3)
+        it('produces 18 matches (6 per round × 3 rounds)', () => {
+            expect(result).toHaveLength(18)
         })
 
-        it('the same pair plays all 3 rounds', () => {
-            const pairs = result.map(p => normalizePair(p.players))
-            expect(new Set(pairs).size).toBe(1)
+        it('every player appears exactly once per round', () => {
+            for (let r = 1; r <= 3; r++) {
+                const inRound = playersInRound(result, r)
+                expect(inRound).toHaveLength(12)
+                expect(new Set(inRound).size).toBe(12)
+            }
+        })
+    })
+
+    describe('2 players (minimum — only 1 unique round possible)', () => {
+        const result = generateLeagueSchedule(['p0', 'p1'], 3)
+
+        it('produces 1 pairing (capped by available rounds)', () => {
+            expect(result).toHaveLength(1)
         })
 
-        it('matchOrder is always 1 (one match per round)', () => {
-            expect(result.every(p => p.matchOrder === 1)).toBe(true)
+        it('the pair plays in round 1', () => {
+            expect(result[0].roundNumber).toBe(1)
         })
     })
 
     describe('roundNumber', () => {
-        it('all 3 round numbers are present', () => {
-            const result = generateLeagueSchedule(['p0', 'p1', 'p2', 'p3'])
+        it('all 3 round numbers are present for 4 players with matchesPerPlayer=3', () => {
+            const result = generateLeagueSchedule(['p0', 'p1', 'p2', 'p3'], 3)
             const rounds = new Set(result.map(p => p.roundNumber))
             expect(rounds).toEqual(new Set([1, 2, 3]))
         })

@@ -10,6 +10,7 @@ export declare const CreateTournamentSchema: z.ZodObject<{
         knockoutLegsToWin: z.ZodDefault<z.ZodNumber>;
         boardCount: z.ZodDefault<z.ZodNumber>;
         knockoutSize: z.ZodDefault<z.ZodUnion<[z.ZodLiteral<4>, z.ZodLiteral<8>]>>;
+        matchesPerPlayer: z.ZodDefault<z.ZodNumber>;
     }, "strip", z.ZodTypeAny, {
         startingScore: 301 | 501 | 701;
         doubleIn: boolean;
@@ -18,6 +19,7 @@ export declare const CreateTournamentSchema: z.ZodObject<{
         knockoutLegsToWin: number;
         boardCount: number;
         knockoutSize: 4 | 8;
+        matchesPerPlayer: number;
     }, {
         startingScore: 301 | 501 | 701;
         doubleIn?: boolean | undefined;
@@ -26,6 +28,7 @@ export declare const CreateTournamentSchema: z.ZodObject<{
         knockoutLegsToWin?: number | undefined;
         boardCount?: number | undefined;
         knockoutSize?: 4 | 8 | undefined;
+        matchesPerPlayer?: number | undefined;
     }>;
 }, "strip", z.ZodTypeAny, {
     name: string;
@@ -38,6 +41,7 @@ export declare const CreateTournamentSchema: z.ZodObject<{
         knockoutLegsToWin: number;
         boardCount: number;
         knockoutSize: 4 | 8;
+        matchesPerPlayer: number;
     };
 }, {
     name: string;
@@ -50,6 +54,7 @@ export declare const CreateTournamentSchema: z.ZodObject<{
         knockoutLegsToWin?: number | undefined;
         boardCount?: number | undefined;
         knockoutSize?: 4 | 8 | undefined;
+        matchesPerPlayer?: number | undefined;
     };
 }>;
 export type CreateTournamentDto = z.infer<typeof CreateTournamentSchema>;
