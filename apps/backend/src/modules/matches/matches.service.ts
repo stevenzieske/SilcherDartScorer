@@ -254,6 +254,12 @@ export class MatchesService {
         return match
     }
 
+    async deleteAllForTournament(tournamentId: string): Promise<void> {
+        const matches = await this.matchModel.find({ tournamentId }).exec()
+        await Promise.all(matches.map(m => this.matchEventsService.deleteAllForMatch(m._id.toString())))
+        await this.matchModel.deleteMany({ tournamentId }).exec()
+    }
+
     async deleteQuickMatch(id: string): Promise<void> {
         const match = await this.findOne(id)
         if (!match.isQuickMatch) throw new BadRequestException('Only quick matches can be deleted')

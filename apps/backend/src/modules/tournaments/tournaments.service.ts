@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
+import { Injectable, NotFoundException } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model } from 'mongoose'
 import { TournamentStatus } from '@dart/shared'
@@ -77,10 +77,8 @@ export class TournamentsService {
     }
 
     async delete(id: string): Promise<void> {
-        const tournament = await this.findOne(id)
-        if (tournament.status !== TournamentStatus.Draft) {
-            throw new BadRequestException('Only Draft tournaments can be deleted')
-        }
+        await this.findOne(id)
+        await this.matchesService.deleteAllForTournament(id)
         await this.tournamentModel.findByIdAndDelete(id).exec()
     }
 }

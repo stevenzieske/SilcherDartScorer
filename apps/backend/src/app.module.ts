@@ -11,6 +11,7 @@ import { MatchEventsModule } from './modules/match-events/match-events.module';
 import { GatewayModule } from './gateway/gateway.module';
 import { StatsModule } from './modules/stats/stats.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { BackupModule } from './modules/backup/backup.module';
 
 @Module({
     imports: [
@@ -32,6 +33,7 @@ import { AuthModule } from './modules/auth/auth.module';
         GatewayModule,
         StatsModule,
         AuthModule,
+        BackupModule,
     ],
 
     controllers: [HealthController],
