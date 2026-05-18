@@ -4,7 +4,7 @@ import http from '../../api/client'
 import { socket } from '../../socket/socket.client'
 import type { Match } from '@dart/shared'
 import { MatchStatus, EVENTS } from '@dart/shared'
-import HomeButton from '../../components/ui/HomeButton'
+import BackButton from '../../components/ui/BackButton'
 import { usePlayers } from '../../hooks/usePlayers'
 
 function ConfirmModal({ title, message, confirmLabel, confirmClass, onConfirm, onCancel }: {
@@ -16,8 +16,8 @@ function ConfirmModal({ title, message, confirmLabel, confirmClass, onConfirm, o
     onCancel: () => void
 }) {
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-            <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 animate-fade-in">
+            <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm animate-scale-in">
                 <h2 className="text-lg font-bold mb-2">{title}</h2>
                 <p className="text-gray-400 text-sm mb-6">{message}</p>
                 <div className="flex gap-3">
@@ -65,11 +65,13 @@ export default function MatchSelect() {
         socket.on(EVENTS.JUDGE_CLAIMS_UPDATED, setClaims)
         socket.on(EVENTS.MATCH_STARTED, refresh)
         socket.on(EVENTS.MATCH_RESET, refresh)
+        socket.on(EVENTS.MATCH_ENDED, refresh)
 
         return () => {
             socket.off(EVENTS.JUDGE_CLAIMS_UPDATED, setClaims)
             socket.off(EVENTS.MATCH_STARTED, refresh)
             socket.off(EVENTS.MATCH_RESET, refresh)
+            socket.off(EVENTS.MATCH_ENDED, refresh)
         }
     }, [])
 
@@ -103,8 +105,9 @@ export default function MatchSelect() {
 
     return (
         <div className="min-h-screen bg-gray-950 text-white">
-            <div className="max-w-lg mx-auto px-4 py-6">
-                <div className="mb-6"><HomeButton /></div>
+            <div className="max-w-lg mx-auto px-4 pb-6"
+                style={{ paddingTop: 'max(1.5rem, env(safe-area-inset-top))' }}>
+                <div className="mb-6"><BackButton to="/" label="Home" /></div>
                 <h1 className="text-2xl font-bold mb-6">Select Match</h1>
 
                 {!hasPending && !hasActive && (
@@ -176,8 +179,8 @@ export default function MatchSelect() {
             </div>
 
             {confirmStart && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-                    <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 animate-fade-in">
+                    <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm animate-scale-in">
                         <h2 className="text-lg font-bold mb-1">Who throws first?</h2>
                         <p className="text-gray-500 text-sm mb-5">{matchLabel(confirmStart)}</p>
                         <div className="flex flex-col gap-3">

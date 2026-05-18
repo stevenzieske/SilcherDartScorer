@@ -5,10 +5,11 @@ import { MatchDocument, MatchModel } from "./match.schema";
 import { TournamentDocument, TournamentModel } from "../tournaments/tournament.schema";
 import { Model } from "mongoose";
 import { MatchEventsService } from "../match-events/match-events.service";
-import { MatchEventType, MatchStatus } from "@dart/shared";
-import type { LeagueStanding, MatchRules, MatchState, TurnData } from "@dart/shared";
+import { MatchEventType, MatchStatus, TournamentStatus } from "@dart/shared";
+import type { BracketRound, LeagueStanding, MatchRules, MatchState, TurnData } from "@dart/shared";
 import { computeTurn, rebuildMatchState } from "../../core/match-engine/match-engine";
 import { parseNotation } from "../../core/match-engine/dart-parser";
+import { advanceBracket } from "../../core/scheduler/knockout-generator";
 
 @Injectable()
 export class MatchesService {
@@ -25,7 +26,7 @@ export class MatchesService {
         const filter: Record<string, unknown> = {}
         if (status) filter.status = status as MatchStatus
         if (tournamentId) filter.tournamentId = tournamentId
-        if (isQuickMatch !== undefined) filter.isQuickMatch = isQuickMatch
+        if (isQuickMatch !== undefined) filter.isQuickMatch = isQuickMatch ? true : { $ne: true }
         return this.matchModel.find(filter).exec()
     }
 
@@ -195,6 +196,9 @@ export class MatchesService {
             if (match.status === MatchStatus.Completed && match.leagueRound !== null && match.tournamentId) {
                 await this.updateStandings(match.tournamentId)
             }
+            if (match.status === MatchStatus.Completed && match.leagueRound === null && match.roundNumber !== null && match.tournamentId) {
+                await this.advanceKnockoutBracket(match)
+            }
         }
 
         // Rebuild and broadcast fresh state after every confirmed throw
@@ -217,6 +221,25 @@ export class MatchesService {
         const freshEvents = await this.matchEventsService.findAllForMatch(id)
         const freshEventObjs = freshEvents.map(e => ({ ...e.toObject(), _id: e._id.toString() }))
         const freshState = rebuildMatchState({ ...match.toObject(), _id: id }, freshEventObjs, rules)
+
+        // Sync match document — needed when undoing a checkout (leg won) or match-ending throw
+        const wasCompleted = match.status === MatchStatus.Completed
+        match.status = freshState.status === 'match_complete' ? MatchStatus.Completed : MatchStatus.Active
+        match.winnerId = freshState.winnerId
+        if (!freshState.winnerId) match.endedAt = null
+        match.legsWon = freshState.legsWon as unknown as number[]
+        match.markModified('legsWon')
+        match.setsWon = freshState.setsWon as unknown as number[]
+        match.markModified('setsWon')
+        await match.save()
+
+        if (wasCompleted && match.status !== MatchStatus.Completed && match.leagueRound !== null && match.tournamentId) {
+            await this.updateStandings(match.tournamentId)
+        }
+        if (wasCompleted && match.status !== MatchStatus.Completed && match.leagueRound === null && match.roundNumber !== null && match.tournamentId) {
+            await this.reverseKnockoutAdvancement(match)
+        }
+
         // MATCH_STATE broadcast clears inProgress on all clients first
         this.eventEmitter.emit('match.state.updated', { matchId: id, state: freshState })
 
@@ -256,8 +279,23 @@ export class MatchesService {
 
     async deleteAllForTournament(tournamentId: string): Promise<void> {
         const matches = await this.matchModel.find({ tournamentId }).exec()
-        await Promise.all(matches.map(m => this.matchEventsService.deleteAllForMatch(m._id.toString())))
-        await this.matchModel.deleteMany({ tournamentId }).exec()
+
+        // Completed matches are preserved for lifetime stats — only delete pending/active ones
+        const toDelete = matches.filter(m => m.status !== MatchStatus.Completed)
+        await Promise.all(toDelete.map(m => this.matchEventsService.deleteAllForMatch(m._id.toString())))
+        if (toDelete.length > 0) {
+            await this.matchModel.deleteMany({
+                tournamentId,
+                status: { $ne: MatchStatus.Completed },
+            }).exec()
+        }
+
+        // Detach completed matches from the tournament so they don't appear in tournament views,
+        // but keep their events so the stats service can still query them
+        await this.matchModel.updateMany(
+            { tournamentId, status: MatchStatus.Completed },
+            { $set: { tournamentId: null } },
+        ).exec()
     }
 
     async deleteQuickMatch(id: string): Promise<void> {
@@ -279,6 +317,164 @@ export class MatchesService {
         if (match.status !== MatchStatus.Paused) throw new BadRequestException('Match is not paused')
         match.status = MatchStatus.Active
         return match.save()
+    }
+
+    private async advanceKnockoutBracket(match: MatchDocument): Promise<void> {
+        const tournament = await this.tournamentModel.findById(match.tournamentId).exec()
+        if (!tournament || !match.winnerId || match.slotIndex === null || match.roundNumber === null) return
+
+        const loserId = match.players.find(p => p !== match.winnerId)
+        if (!loserId) return
+
+        const rounds = tournament.knockoutRounds as BracketRound[]
+        const srcRound = rounds.find(r =>
+            r.roundNumber === match.roundNumber &&
+            r.slots.some(s => s.slotIndex === match.slotIndex && s.matchId === match._id.toString())
+        )
+        if (!srcRound) return
+
+        const knockoutSize = tournament.rules.knockoutSize as 4 | 8
+        let updatedBracket = advanceBracket(
+            rounds, match.roundNumber, srcRound.bracketSide,
+            match.slotIndex, match.winnerId, loserId, knockoutSize,
+        )
+
+        // Create Match documents for newly-ready slots (both players known, no matchId yet)
+        for (const round of updatedBracket) {
+            for (const slot of round.slots) {
+                if (slot.matchId || slot.isBye) continue
+                if (slot.player1 === 'TBD' || slot.player2 === 'TBD') continue
+                if (slot.player1 === 'BYE' || slot.player2 === 'BYE') continue
+
+                const newMatch = await this.create({
+                    tournamentId: match.tournamentId,
+                    leagueRound: null,
+                    roundNumber: round.roundNumber,
+                    roundName: round.roundName,
+                    slotIndex: slot.slotIndex,
+                    players: [slot.player1 as string, slot.player2 as string],
+                    ruleStartingScore: tournament.rules.startingScore,
+                    ruleDoubleIn: tournament.rules.doubleIn,
+                    ruleDoubleOut: tournament.rules.doubleOut,
+                    ruleLegsToWin: tournament.rules.knockoutLegsToWin,
+                })
+                slot.matchId = newMatch._id.toString()
+            }
+        }
+
+        // Record final placements when a placement match completes
+        const placements = { ...(tournament.placements as Record<string, number> || {}) }
+        for (const round of updatedBracket) {
+            for (const slot of round.slots) {
+                if (!slot.playsFor || !slot.winnerId || !slot.loserId) continue
+                placements[slot.winnerId] = slot.playsFor
+                placements[slot.loserId] = slot.playsFor + 1
+            }
+        }
+        tournament.placements = placements as any
+        tournament.markModified('placements')
+
+        // Complete the tournament when every non-BYE slot has a result
+        const allDone = updatedBracket.every(r => r.slots.every(s => s.isBye || !!s.winnerId))
+        if (allDone) {
+            tournament.status = TournamentStatus.Completed
+            tournament.completedAt = new Date().toISOString()
+        }
+
+        tournament.knockoutRounds = updatedBracket as any
+        tournament.markModified('knockoutRounds')
+        await tournament.save()
+
+        this.eventEmitter.emit('tournament.knockout.updated', {
+            tournamentId: match.tournamentId,
+            knockoutRounds: updatedBracket,
+        })
+        if (allDone) {
+            this.eventEmitter.emit('tournament.updated', {
+                tournamentId: match.tournamentId,
+                status: TournamentStatus.Completed,
+            })
+        }
+    }
+
+    private async reverseKnockoutAdvancement(match: MatchDocument): Promise<void> {
+        const tournament = await this.tournamentModel.findById(match.tournamentId).exec()
+        if (!tournament || match.slotIndex === null || match.roundNumber === null) return
+
+        const rounds = tournament.knockoutRounds as BracketRound[]
+        const srcRound = rounds.find(r =>
+            r.roundNumber === match.roundNumber &&
+            r.slots.some(s => s.slotIndex === match.slotIndex && s.matchId === match._id.toString())
+        )
+        if (!srcRound) return
+
+        const knockoutSize = tournament.rules.knockoutSize as 4 | 8
+        const cloned: BracketRound[] = JSON.parse(JSON.stringify(rounds))
+
+        // Clear the completed result from the source slot
+        const src = cloned.find(r => r.roundNumber === srcRound.roundNumber && r.bracketSide === srcRound.bracketSide)
+        if (src) {
+            const slot = src.slots.find(s => s.slotIndex === match.slotIndex!)
+            if (slot) { slot.winnerId = null; slot.loserId = null }
+        }
+
+        const pos: 'player1' | 'player2' = match.slotIndex! % 2 === 1 ? 'player1' : 'player2'
+        const nextSlot = Math.ceil(match.slotIndex! / 2)
+        const matchIdsToDelete: string[] = []
+
+        function resetTarget(targetR: number, targetSide: 'winners' | 'consolation', targetSlotIdx: number, playsFor: number | null) {
+            const candidates = cloned.filter(r => r.roundNumber === targetR && r.bracketSide === targetSide)
+            const round = playsFor !== null
+                ? candidates.find(r => r.slots.some(s => s.playsFor === playsFor))
+                : candidates[0]
+            if (!round) return
+            const slot = round.slots.find(s => s.slotIndex === targetSlotIdx)
+            if (!slot) return
+            slot[pos] = 'TBD'
+            if (slot.matchId) {
+                matchIdsToDelete.push(slot.matchId)
+                slot.matchId = null
+                slot.winnerId = null
+                slot.loserId = null
+            }
+        }
+
+        if (knockoutSize === 4) {
+            if (srcRound.roundNumber === 1) {
+                resetTarget(2, 'winners', nextSlot, null)
+                resetTarget(2, 'consolation', nextSlot, null)
+            }
+        } else {
+            if (srcRound.roundNumber === 1 && srcRound.bracketSide === 'winners') {
+                resetTarget(2, 'winners', nextSlot, null)
+                resetTarget(2, 'consolation', nextSlot, null)
+            } else if (srcRound.roundNumber === 2 && srcRound.bracketSide === 'winners') {
+                resetTarget(3, 'winners', 1, null)
+                resetTarget(3, 'consolation', 1, 3)
+            } else if (srcRound.roundNumber === 2 && srcRound.bracketSide === 'consolation') {
+                resetTarget(3, 'consolation', 1, 5)
+                resetTarget(3, 'consolation', 1, 7)
+            }
+        }
+
+        for (const mid of matchIdsToDelete) {
+            await this.matchEventsService.deleteAllForMatch(mid)
+            await this.matchModel.findByIdAndDelete(mid).exec()
+        }
+
+        if (tournament.status === TournamentStatus.Completed) {
+            tournament.status = TournamentStatus.Active
+            tournament.completedAt = undefined
+        }
+
+        tournament.knockoutRounds = cloned as any
+        tournament.markModified('knockoutRounds')
+        await tournament.save()
+
+        this.eventEmitter.emit('tournament.knockout.updated', {
+            tournamentId: match.tournamentId,
+            knockoutRounds: cloned,
+        })
     }
 
     private async updateStandings(tournamentId: string): Promise<void> {

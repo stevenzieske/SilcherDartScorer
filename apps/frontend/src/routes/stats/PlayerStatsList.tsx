@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import http from '../../api/client'
 import type { Player } from '@dart/shared'
-import HomeButton from '../../components/ui/HomeButton'
+import BackButton from '../../components/ui/BackButton'
 
 export default function PlayerStatsList() {
     const navigate = useNavigate()
@@ -20,8 +20,9 @@ export default function PlayerStatsList() {
 
     return (
         <div className="min-h-screen bg-gray-950 text-white">
-            <div className="max-w-lg mx-auto px-4 py-6">
-                <div className="mb-6"><HomeButton /></div>
+            <div className="max-w-lg mx-auto px-4 pb-6"
+                style={{ paddingTop: 'max(1.5rem, env(safe-area-inset-top))' }}>
+                <div className="mb-6"><BackButton to="/" label="Home" /></div>
                 <h1 className="text-2xl font-bold mb-5">Player Stats</h1>
 
                 <input

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import http from '../../api/client'
 import type { Match } from '@dart/shared'
-import HomeButton from '../../components/ui/HomeButton'
+import BackButton from '../../components/ui/BackButton'
 import { usePlayers } from '../../hooks/usePlayers'
 
 export default function QuickMatchHub() {
@@ -29,8 +29,9 @@ export default function QuickMatchHub() {
 
     return (
         <div className="min-h-screen bg-gray-950 text-white flex flex-col">
-            <div className="bg-gray-900 border-b border-gray-800 px-4 pt-4 pb-4">
-                <div className="mb-3"><HomeButton /></div>
+            <div className="bg-gray-900 border-b border-gray-800 px-4 pb-4"
+                style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}>
+                <div className="mb-3"><BackButton to="/" label="Home" /></div>
                 <h1 className="text-xl font-bold">Quick Match</h1>
             </div>
 
@@ -78,8 +79,8 @@ export default function QuickMatchHub() {
             </div>
 
             {confirmDelete && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-                    <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 animate-fade-in">
+                    <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm animate-scale-in">
                         <h2 className="text-lg font-bold mb-2">Delete match?</h2>
                         <p className="text-gray-400 text-sm mb-6">
                             {confirmDelete.players.map(p => getName(p)).join(' vs ')} will be permanently deleted.

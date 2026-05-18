@@ -8,7 +8,6 @@ import { MatchEventsService } from "../modules/match-events/match-events.service
 import { MatchDocument, MatchModel } from "../modules/matches/match.schema";
 import type { DartInProgressData, DartThrow } from "@dart/shared";
 import { EVENTS } from "@dart/shared";
-import { parseNotation } from "../core/match-engine/dart-parser";
 
 const dartBuffer = new Map<string, DartInProgressData>()
 const claimedMatches = new Map<string, string>()  // matchId → judgeId
@@ -88,33 +87,37 @@ export class TournamentGateway implements OnGatewayInit, OnGatewayDisconnect {
 
     @SubscribeMessage(EVENTS.DART_THROWN)
     handleDartThrown(
-        @MessageBody() data: { matchId: string; notation: string; playerId: string; remainingBefore: number },
+        @MessageBody() data: { matchId: string; darts: DartThrow[]; playerId: string; remainingBefore: number },
         @ConnectedSocket() client: Socket,
     ) {
-        const { matchId, notation, playerId, remainingBefore } = data
+        const { matchId, darts, playerId, remainingBefore } = data
 
-        let score: number
-        try {
-            score = parseNotation(notation)
-        } catch {
+        if (!darts || darts.length === 0) {
+            dartBuffer.delete(matchId)
+            const empty: DartInProgressData = {
+                matchId, playerId, legNumber: 0,
+                dartIndex: -1,
+                dart: { notation: '', score: 0 },
+                dartsThrown: [],
+                remainingBefore,
+                runningScore: 0,
+                runningRemaining: remainingBefore,
+            }
+            this.server.to(`match:${matchId}`).emit(EVENTS.DART_IN_PROGRESS, empty)
             return
         }
 
-        const dart: DartThrow = { notation: notation.toUpperCase(), score }
-
-        const existingDarts = dartBuffer.get(matchId)?.dartsThrown ?? []
-        const dartsThrown = [...existingDarts, dart]
-        const runningScore = dartsThrown.reduce((sum, d) => sum + d.score, 0)
-
+        const runningScore = darts.reduce((sum, d) => sum + d.score, 0)
         const payload: DartInProgressData = {
             matchId,
             playerId,
             legNumber: 0,
-            dartIndex: dartsThrown.length - 1,
-            dart,
-            dartsThrown,
+            dartIndex: darts.length - 1,
+            dart: darts[darts.length - 1],
+            dartsThrown: darts,
+            remainingBefore,
             runningScore,
-            runningRemaining: remainingBefore - runningScore
+            runningRemaining: remainingBefore - runningScore,
         }
 
         dartBuffer.set(matchId, payload)
@@ -134,9 +137,12 @@ export class TournamentGateway implements OnGatewayInit, OnGatewayDisconnect {
     }
 
     @OnEvent('match.state.updated')
-    handleMatchStateUpdated({ matchId, state }: { matchId: string; state: unknown }) {
+    handleMatchStateUpdated({ matchId, state }: { matchId: string; state: { status: string; winnerId?: string } }) {
         dartBuffer.delete(matchId)
         this.server.to(`match:${matchId}`).emit(EVENTS.MATCH_STATE, state)
+        if (state.status === 'match_complete') {
+            this.server.to('judges:lobby').emit(EVENTS.MATCH_ENDED, { matchId, winnerId: state.winnerId ?? null })
+        }
     }
 
     @OnEvent('match.started')
@@ -173,6 +179,7 @@ export class TournamentGateway implements OnGatewayInit, OnGatewayDisconnect {
                 dartIndex: i,
                 dart,
                 dartsThrown: darts.slice(0, i + 1),
+                remainingBefore,
                 runningScore: running,
                 runningRemaining: remainingBefore - running,
             }
@@ -184,6 +191,21 @@ export class TournamentGateway implements OnGatewayInit, OnGatewayDisconnect {
     @OnEvent('tournament.standings.updated')
     handleStandingsUpdated({ tournamentId, standings }: { tournamentId: string; standings: unknown[] }) {
         this.server.to(`tournament:${tournamentId}`).emit(EVENTS.LEAGUE_STANDINGS, standings)
+    }
+
+    @OnEvent('tournament.phase.changed')
+    handlePhaseChanged({ tournamentId, bracket }: { tournamentId: string; bracket: unknown[] }) {
+        this.server.to(`tournament:${tournamentId}`).emit(EVENTS.PHASE_CHANGED, { phase: 'knockout', knockoutRounds: bracket })
+    }
+
+    @OnEvent('tournament.knockout.updated')
+    handleKnockoutUpdated({ tournamentId, knockoutRounds }: { tournamentId: string; knockoutRounds: unknown[] }) {
+        this.server.to(`tournament:${tournamentId}`).emit(EVENTS.KNOCKOUT_BRACKET, knockoutRounds)
+    }
+
+    @OnEvent('tournament.updated')
+    handleTournamentUpdated({ tournamentId, status }: { tournamentId: string; status: string }) {
+        this.server.to(`tournament:${tournamentId}`).emit(EVENTS.TOURNAMENT_UPDATED, { tournamentId, status })
     }
 
     clearDartBuffer(matchId: string) {

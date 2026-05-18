@@ -21,6 +21,7 @@ export interface MatchState {
   status: 'active' | 'leg_complete' | 'match_complete'
   players: string[]
   currentLeg: LegState
+  previousLegs: LegState[]
   legsWon: number[]
   legsWonInSet: number[]
   setsWon: number[]

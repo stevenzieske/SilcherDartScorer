@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import http from '../../api/client'
 import { usePlayers } from '../../hooks/usePlayers'
+import BackButton from '../../components/ui/BackButton'
 
 interface StatEntry {
     playerId: string
@@ -63,7 +64,7 @@ export default function TournamentStatsPage() {
         return (
             <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center flex-col gap-3">
                 <p className="text-gray-400">Could not load tournament stats</p>
-                <button onClick={() => navigate(-1)} className="text-gray-600 hover:text-white text-sm transition-colors">← Back</button>
+                <BackButton label="Back" />
             </div>
         )
     }
@@ -80,12 +81,9 @@ export default function TournamentStatsPage() {
 
     return (
         <div className="min-h-screen bg-gray-950 text-white">
-            <div className="max-w-lg mx-auto px-4 py-6">
-                <button
-                    onClick={() => navigate(-1)}
-                    className="text-gray-500 hover:text-white text-sm transition-colors mb-6">
-                    ← Back
-                </button>
+            <div className="max-w-lg mx-auto px-4 pb-6"
+                style={{ paddingTop: 'max(1.5rem, env(safe-area-inset-top))' }}>
+                <div className="mb-6"><BackButton label="Back" /></div>
 
                 <div className="mb-6">
                     <h1 className="text-2xl font-bold">{data.tournamentName}</h1>

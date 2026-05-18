@@ -21,6 +21,7 @@ export declare const EVENTS: {
     readonly LEAGUE_ROUND_COMPLETE: "league:round_complete";
     readonly PHASE_CHANGED: "phase:changed";
     readonly KNOCKOUT_BRACKET: "knockout:bracket";
+    readonly TOURNAMENT_UPDATED: "tournament:updated";
 };
 export interface ServerToClientEvents {
     [EVENTS.MATCH_STATE]: (state: MatchState) => void;
@@ -53,6 +54,10 @@ export interface ServerToClientEvents {
         knockoutRounds: BracketRound[];
     }) => void;
     [EVENTS.KNOCKOUT_BRACKET]: (rounds: BracketRound[]) => void;
+    [EVENTS.TOURNAMENT_UPDATED]: (data: {
+        tournamentId: string;
+        status: string;
+    }) => void;
 }
 export interface ClientToServerEvents {
     [EVENTS.SUBSCRIBE_TOURNAMENT]: (tournamentId: string) => void;

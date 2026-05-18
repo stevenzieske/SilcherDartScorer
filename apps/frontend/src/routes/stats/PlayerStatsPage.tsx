@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import http from '../../api/client'
 import type { Player } from '@dart/shared'
+import BackButton from '../../components/ui/BackButton'
 
 interface PlayerStats {
     matchesPlayed: number
@@ -55,7 +56,6 @@ function placement(n: number | null) {
 
 export default function PlayerStatsPage() {
     const { id } = useParams<{ id: string }>()
-    const navigate = useNavigate()
     const [data, setData] = useState<PlayerStatsResponse | null>(null)
     const [error, setError] = useState(false)
 
@@ -71,7 +71,7 @@ export default function PlayerStatsPage() {
         return (
             <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center flex-col gap-3">
                 <p className="text-gray-400">Could not load player stats</p>
-                <button onClick={() => navigate(-1)} className="text-gray-600 hover:text-white text-sm transition-colors">← Back</button>
+                <BackButton label="Back" />
             </div>
         )
     }
@@ -88,12 +88,9 @@ export default function PlayerStatsPage() {
 
     return (
         <div className="min-h-screen bg-gray-950 text-white">
-            <div className="max-w-lg mx-auto px-4 py-6">
-                <button
-                    onClick={() => navigate(-1)}
-                    className="text-gray-500 hover:text-white text-sm transition-colors mb-6">
-                    ← Back
-                </button>
+            <div className="max-w-lg mx-auto px-4 pb-6"
+                style={{ paddingTop: 'max(1.5rem, env(safe-area-inset-top))' }}>
+                <div className="mb-6"><BackButton label="Back" /></div>
 
                 {/* Player header */}
                 <div className="flex items-center gap-4 mb-6">

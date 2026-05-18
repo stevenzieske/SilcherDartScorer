@@ -21,6 +21,7 @@ export interface Match {
   tournamentId: string | null
   leagueRound: number | null  // 1, 2, or 3 for league phase matches — null for knockout
   roundNumber: number | null  // knockout bracket round number — null for league matches
+  roundName: string | null    // bracket round display name e.g. "Final", "3rd Place"
   slotIndex: number | null    // knockout bracket slot index — null for league matches
   board: number | null
   status: MatchStatus
@@ -50,6 +51,7 @@ export interface DartInProgressData {
   dartIndex: number        // 0-based: 0 = first dart of the turn
   dart: DartThrow          // the dart just thrown
   dartsThrown: DartThrow[] // all darts in this turn so far (includes current)
+  remainingBefore: number  // score before any dart in this turn
   runningScore: number     // sum of dartsThrown scores
   runningRemaining: number // remainingBefore - runningScore (may be negative — client shows bust warning)
 }

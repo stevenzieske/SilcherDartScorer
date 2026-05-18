@@ -4,7 +4,7 @@ import http from '../../api/client'
 import { useTournamentStore } from '../../stores/tournament.store'
 import type { Tournament } from '@dart/shared'
 import { TournamentStatus } from '@dart/shared'
-import HomeButton from '../../components/ui/HomeButton'
+import BackButton from '../../components/ui/BackButton'
 
 export default function TournamentList() {
     const navigate = useNavigate()
@@ -20,15 +20,16 @@ export default function TournamentList() {
 
     return (
         <div className="min-h-screen bg-gray-950 text-white">
-            <div className="max-w-lg mx-auto px-4 py-6">
-                <div className="mb-6"><HomeButton /></div>
+            <div className="max-w-lg mx-auto px-4 pb-6"
+                style={{ paddingTop: 'max(1.5rem, env(safe-area-inset-top))' }}>
+                <div className="mb-6"><BackButton to="/" label="Home" /></div>
                 <h1 className="text-2xl font-bold mb-6">Tournaments</h1>
                 {tournaments.length === 0 ? (
-                    <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 text-center">
+                    <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 text-center animate-slide-up">
                         <p className="text-gray-500">No tournaments available</p>
                     </div>
                 ) : (
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2 animate-slide-up">
                         {tournaments.map(t => (
                             <div key={t._id}
                                 onClick={() => navigate(`/spectator/tournaments/${t._id}`)}
@@ -39,7 +40,7 @@ export default function TournamentList() {
                                 </div>
                                 <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
                                     t.status === 'active' ? 'bg-green-900 text-green-400' : 'bg-gray-800 text-gray-400'
-                                }`}>{t.status}</span>
+                                }`}>{t.status.charAt(0).toUpperCase() + t.status.slice(1)}</span>
                             </div>
                         ))}
                     </div>

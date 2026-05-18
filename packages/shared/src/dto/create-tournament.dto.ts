@@ -9,7 +9,7 @@ export const CreateTournamentSchema = z.object({
     doubleOut: z.boolean().default(true),
     groupLegsToWin: z.number().int().min(1).default(2),
     knockoutLegsToWin: z.number().int().min(1).default(3),
-    boardCount: z.number().int().min(1).max(4).default(2),
+    boardCount: z.number().int().min(1).default(2),
     knockoutSize: z.union([z.literal(4), z.literal(8)]).default(4),
   }),
 })

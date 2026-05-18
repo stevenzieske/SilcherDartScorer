@@ -18,6 +18,7 @@ export interface Match {
     tournamentId: string | null;
     leagueRound: number | null;
     roundNumber: number | null;
+    roundName: string | null;
     slotIndex: number | null;
     board: number | null;
     status: MatchStatus;
@@ -44,6 +45,7 @@ export interface DartInProgressData {
     dartIndex: number;
     dart: DartThrow;
     dartsThrown: DartThrow[];
+    remainingBefore: number;
     runningScore: number;
     runningRemaining: number;
 }

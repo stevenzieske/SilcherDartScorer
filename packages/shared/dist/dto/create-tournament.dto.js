@@ -11,7 +11,7 @@ exports.CreateTournamentSchema = zod_1.z.object({
         doubleOut: zod_1.z.boolean().default(true),
         groupLegsToWin: zod_1.z.number().int().min(1).default(2),
         knockoutLegsToWin: zod_1.z.number().int().min(1).default(3),
-        boardCount: zod_1.z.number().int().min(1).max(4).default(2),
+        boardCount: zod_1.z.number().int().min(1).default(2),
         knockoutSize: zod_1.z.union([zod_1.z.literal(4), zod_1.z.literal(8)]).default(4),
     }),
 });

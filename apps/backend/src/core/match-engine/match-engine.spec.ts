@@ -12,6 +12,7 @@ const MATCH: Match = {
     tournamentId: 'tour-1',
     leagueRound: null,
     roundNumber: null,
+    roundName: null,
     slotIndex: null,
     board: 1,
     status: MatchStatus.Active,

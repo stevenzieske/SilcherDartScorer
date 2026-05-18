@@ -50,13 +50,25 @@ export class MatchEventsService {
         return this.eventModel.deleteMany({ matchId }).exec().then(() => {})
     }
 
-    deleteLastThrow(matchId: string): Promise<MatchEventDocument | null> {
-        return this.eventModel
-            .findOneAndDelete({
+    async deleteLastThrow(matchId: string): Promise<MatchEventDocument | null> {
+        const lastThrow = await this.eventModel
+            .findOne({
                 matchId,
                 type: { $in: [MatchEventType.Throw, MatchEventType.Bust, MatchEventType.Checkout] },
             })
             .sort({ sequence: -1 })
             .exec()
+
+        if (!lastThrow) return null
+
+        // Remove any system events appended after this throw (LegEnded, MatchEnded, LegStarted)
+        await this.eventModel.deleteMany({
+            matchId,
+            sequence: { $gt: lastThrow.sequence },
+        }).exec()
+
+        await this.eventModel.findByIdAndDelete(lastThrow._id).exec()
+
+        return lastThrow
     }
 }

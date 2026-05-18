@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTournamentStore } from '../../stores/tournament.store'
 import http from '../../api/client'
 import type { Tournament } from '@dart/shared'
-import HomeButton from '../../components/ui/HomeButton'
+import BackButton from '../../components/ui/BackButton'
 
 const NUKE_CONFIRM_WORD = 'NUKE'
 
@@ -99,12 +99,13 @@ export default function AdminDashboard() {
 
     return (
         <div className="min-h-screen bg-gray-950 text-white">
-            <div className="max-w-2xl mx-auto px-4 py-6">
+            <div className="max-w-2xl mx-auto px-4 pb-6"
+                style={{ paddingTop: 'max(1.5rem, env(safe-area-inset-top))' }}>
                 <div className="flex items-center justify-between mb-6">
-                    <HomeButton />
+                    <BackButton to="/" label="Home" />
                     <button onClick={() => navigate('/admin/players')}
-                        className="text-gray-400 hover:text-white text-sm transition-colors">
-                        Players
+                        className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors">
+                        Players <span className="text-gray-600">→</span>
                     </button>
                 </div>
 
@@ -132,9 +133,8 @@ export default function AdminDashboard() {
                                 </div>
                                 <span className={`text-xs px-2.5 py-1 rounded-full font-medium shrink-0 ${
                                     t.status === 'active' ? 'bg-green-900 text-green-400' :
-                                    t.status === 'completed' ? 'bg-gray-800 text-gray-400' :
                                     'bg-gray-800 text-gray-400'
-                                }`}>{t.status}</span>
+                                }`}>{t.status.charAt(0).toUpperCase() + t.status.slice(1)}</span>
                                 <button
                                     onClick={e => { e.stopPropagation(); setConfirmDelete(t) }}
                                     className="text-gray-600 hover:text-red-400 text-sm px-1 py-1 shrink-0 transition-colors">
@@ -174,8 +174,8 @@ export default function AdminDashboard() {
 
             {/* Tournament delete confirmation */}
             {confirmDelete && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-                    <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 animate-fade-in">
+                    <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm animate-scale-in">
                         <h2 className="text-lg font-bold mb-2">Delete tournament?</h2>
                         <p className="text-gray-400 text-sm mb-6">
                             <span className="text-white font-medium">{confirmDelete.name}</span> and all its matches and stats will be permanently deleted.
@@ -196,8 +196,8 @@ export default function AdminDashboard() {
 
             {/* Import confirmation */}
             {importFile && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-                    <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 animate-fade-in">
+                    <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm animate-scale-in">
                         <h2 className="text-lg font-bold mb-2">Replace all data?</h2>
                         <p className="text-gray-400 text-sm mb-1">
                             Importing <span className="text-white font-medium">{importFile.name}</span> will permanently replace all current players, tournaments, matches, and stats.
@@ -219,8 +219,8 @@ export default function AdminDashboard() {
 
             {/* Nuke confirmation */}
             {showNuke && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-                    <div className="bg-gray-900 border border-red-900 rounded-2xl p-6 w-full max-w-sm">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 animate-fade-in">
+                    <div className="bg-gray-900 border border-red-900 rounded-2xl p-6 w-full max-w-sm animate-scale-in">
                         <h2 className="text-lg font-bold mb-1 text-red-400">Wipe all data</h2>
                         <p className="text-gray-400 text-sm mb-4">
                             This permanently deletes every player, tournament, match, and stat. There is no undo.

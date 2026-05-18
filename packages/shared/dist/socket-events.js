@@ -25,4 +25,5 @@ exports.EVENTS = {
     LEAGUE_ROUND_COMPLETE: 'league:round_complete',
     PHASE_CHANGED: 'phase:changed',
     KNOCKOUT_BRACKET: 'knockout:bracket',
+    TOURNAMENT_UPDATED: 'tournament:updated',
 };

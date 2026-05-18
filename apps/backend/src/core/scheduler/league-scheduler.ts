@@ -25,7 +25,7 @@ function buildRoundPairings(players: string[]): [string, string][][] {
     const rotating = players.slice(1)
     const rounds: [string, string][][] = []
 
-    for (let r = 0; r < 3; r++) {
+    for (let r = 0; r < players.length - 1; r++) {
         const rotated = rotateRight(rotating, r)
         const circle = [fixed, ...rotated]
         const pairs: [string, string][] = []

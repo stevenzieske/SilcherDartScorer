@@ -29,6 +29,7 @@ export const EVENTS = {
   LEAGUE_ROUND_COMPLETE: 'league:round_complete',
   PHASE_CHANGED:         'phase:changed',
   KNOCKOUT_BRACKET:      'knockout:bracket',
+  TOURNAMENT_UPDATED:    'tournament:updated',
 } as const
 
 export interface ServerToClientEvents {
@@ -44,6 +45,7 @@ export interface ServerToClientEvents {
   [EVENTS.LEAGUE_ROUND_COMPLETE]: (data: { roundNumber: number; standings: LeagueStanding[] }) => void
   [EVENTS.PHASE_CHANGED]:         (data: { phase: 'knockout'; knockoutRounds: BracketRound[] }) => void
   [EVENTS.KNOCKOUT_BRACKET]:      (rounds: BracketRound[]) => void
+  [EVENTS.TOURNAMENT_UPDATED]:    (data: { tournamentId: string; status: string }) => void
 }
 
 export interface ClientToServerEvents {

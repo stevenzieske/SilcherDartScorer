@@ -10,6 +10,7 @@ export class MatchModel implements Omit<Match, '_id'> {
     @Prop({ type: String, default: null }) tournamentId: string | null
     @Prop({ type: Number, default: null }) leagueRound: number | null
     @Prop({ type: Number, default: null }) roundNumber: number | null
+    @Prop({ type: String, default: null }) roundName: string | null
     @Prop({ type: Number, default: null }) slotIndex: number | null
     @Prop({ type: Number, default: null }) board: number | null
     @Prop({ type: String, enum: MatchStatus, default: MatchStatus.Pending }) status: MatchStatus

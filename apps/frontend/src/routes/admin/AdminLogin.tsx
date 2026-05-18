@@ -29,7 +29,7 @@ export default function AdminLogin() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-6 gap-6">
+        <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-6 gap-6 animate-slide-up">
             <div className="text-center">
                 <h1 className="text-2xl font-bold text-white">Admin</h1>
                 <p className="text-gray-500 text-sm mt-1">Enter your PIN to continue</p>
@@ -37,6 +37,7 @@ export default function AdminLogin() {
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col gap-4 w-full max-w-xs">
                 <input
                     type="password"
+                    inputMode="numeric"
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && login()}

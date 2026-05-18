@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import http from '../../api/client'
 import type { Match, Player } from '@dart/shared'
-import HomeButton from '../../components/ui/HomeButton'
+import BackButton from '../../components/ui/BackButton'
 
 type Step = 'players' | 'settings' | 'order'
 
@@ -130,8 +130,9 @@ export default function QuickMatchSetup() {
     if (step === 'players') {
         return (
             <div className="min-h-screen bg-gray-950 text-white flex flex-col">
-                <div className="bg-gray-900 border-b border-gray-800 px-4 pt-4 pb-4">
-                    <div className="mb-3"><HomeButton /></div>
+                <div className="bg-gray-900 border-b border-gray-800 px-4 pb-4"
+                    style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}>
+                    <div className="mb-3"><BackButton to="/quick-match" label="Quick Match" /></div>
                     <h1 className="text-xl font-bold">New Quick Match</h1>
                     <p className="text-gray-500 text-xs mt-1">Step 1 of 3 — Select players</p>
                 </div>
@@ -183,8 +184,9 @@ export default function QuickMatchSetup() {
     if (step === 'settings') {
         return (
             <div className="min-h-screen bg-gray-950 text-white flex flex-col">
-                <div className="bg-gray-900 border-b border-gray-800 px-4 pt-4 pb-4">
-                    <div className="mb-3"><HomeButton /></div>
+                <div className="bg-gray-900 border-b border-gray-800 px-4 pb-4"
+                    style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}>
+                    <div className="mb-3"><BackButton to="/quick-match" label="Quick Match" /></div>
                     <h1 className="text-xl font-bold">New Quick Match</h1>
                     <p className="text-gray-500 text-xs mt-1">Step 2 of 3 — Settings</p>
                 </div>
@@ -296,8 +298,9 @@ export default function QuickMatchSetup() {
     // Step 3 — Player order
     return (
         <div className="min-h-screen bg-gray-950 text-white flex flex-col">
-            <div className="bg-gray-900 border-b border-gray-800 px-4 pt-4 pb-4">
-                <div className="mb-3"><HomeButton /></div>
+            <div className="bg-gray-900 border-b border-gray-800 px-4 pb-4"
+                style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}>
+                <div className="mb-3"><BackButton to="/quick-match" label="Quick Match" /></div>
                 <h1 className="text-xl font-bold">New Quick Match</h1>
                 <p className="text-gray-500 text-xs mt-1">Step 3 of 3 — Player order</p>
             </div>

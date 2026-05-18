@@ -29,6 +29,7 @@ services:
     volumes:
       - ./apps/backend/src:/app/apps/backend/src
       - ./packages/shared/src:/app/packages/shared/src
+      - ./packages/shared/dist:/app/packages/shared/dist
     depends_on:
       - mongodb
     networks:

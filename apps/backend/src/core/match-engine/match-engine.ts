@@ -92,6 +92,7 @@ export function rebuildMatchState(match: Match, events: MatchEvent[], rules: Mat
     let legsWonInSet: number[] = Array(playerCount).fill(0)
     let setsWon: number[] = Array(playerCount).fill(0)
     let currentLeg = initialLegState(1, startingPlayerIndex, rules.startingScore, playerCount)
+    let previousLegs: LegState[] = []
     let status: MatchState['status'] = 'active'
     let winnerId: string | null = null
 
@@ -124,6 +125,7 @@ export function rebuildMatchState(match: Match, events: MatchEvent[], rules: Mat
             }
 
             case MatchEventType.LegStarted: {
+                previousLegs = [...previousLegs, currentLeg]
                 const nextStartingPlayer = (currentLeg.startingPlayerIndex + 1) % playerCount
                 currentLeg = initialLegState(currentLeg.legNumber + 1, nextStartingPlayer, rules.startingScore, playerCount)
                 status = 'active'
@@ -146,6 +148,7 @@ export function rebuildMatchState(match: Match, events: MatchEvent[], rules: Mat
         status,
         players: match.players,
         currentLeg,
+        previousLegs,
         legsWon,
         legsWonInSet,
         setsWon,

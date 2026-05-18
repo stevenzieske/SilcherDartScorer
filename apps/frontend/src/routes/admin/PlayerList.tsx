@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import http from '../../api/client'
 import type { Player } from '@dart/shared'
-import HomeButton from '../../components/ui/HomeButton'
+import BackButton from '../../components/ui/BackButton'
 
 function randomHex(): string {
     return '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0')
@@ -98,11 +98,10 @@ export default function PlayerList() {
 
     return (
         <div className="min-h-screen bg-gray-950 text-white">
-            <div className="max-w-lg mx-auto px-4 py-6">
-                <div className="flex items-center gap-3 flex-wrap mb-6">
-                    <HomeButton />
-                    <span className="text-gray-700">·</span>
-                    <button onClick={() => navigate('/admin')} className="text-gray-500 hover:text-white text-sm transition-colors">Admin</button>
+            <div className="max-w-lg mx-auto px-4 pb-6"
+                style={{ paddingTop: 'max(1.5rem, env(safe-area-inset-top))' }}>
+                <div className="mb-6">
+                    <BackButton label="Back" />
                 </div>
 
                 <h1 className="text-2xl font-bold mb-5">Players</h1>
@@ -151,7 +150,7 @@ export default function PlayerList() {
                     {players.length === 0 && (
                         <p className="text-gray-500 text-sm text-center py-4">No players yet</p>
                     )}
-                    {players.map(p => (
+                    {[...players].sort((a, b) => a.name.localeCompare(b.name)).map(p => (
                         <div key={p._id} className="bg-gray-900 border border-gray-800 rounded-2xl px-4 py-3 flex items-center justify-between gap-3">
                             <div className="flex items-center gap-3 min-w-0">
                                 <div className="w-8 h-8 rounded-full shrink-0" style={{ background: p.avatarColor }} />
@@ -179,8 +178,8 @@ export default function PlayerList() {
 
             {/* Edit modal */}
             {editingPlayer && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-                    <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm flex flex-col gap-3">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 animate-fade-in">
+                    <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm flex flex-col gap-3 animate-scale-in">
                         <h2 className="text-lg font-bold">Edit Player</h2>
                         <input
                             value={editName}

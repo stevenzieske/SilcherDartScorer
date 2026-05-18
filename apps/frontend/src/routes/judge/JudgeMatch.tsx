@@ -6,7 +6,7 @@ import { useMatchSocket } from '../../socket/useMatchSocket'
 import { socket } from '../../socket/socket.client'
 import { EVENTS, buildCheckoutDisplay } from '@dart/shared'
 import type { Match, TurnData } from '@dart/shared'
-import HomeButton from '../../components/ui/HomeButton'
+import BackButton from '../../components/ui/BackButton'
 import { usePlayers } from '../../hooks/usePlayers'
 
 const JUDGE_ID = `judge-${Math.random().toString(36).slice(2, 8)}`
@@ -80,15 +80,6 @@ export default function JudgeMatch() {
         }
     }, [id, match?.isQuickMatch])
 
-    useEffect(() => {
-        if (matchState?.winnerId) {
-            if (match?.isQuickMatch) {
-                navigate('/quick-match')
-            } else {
-                navigate('/judge')
-            }
-        }
-    }, [matchState?.winnerId, match?.isQuickMatch])
 
     const leg = matchState?.currentLeg
     const currentPlayerIndex = leg?.currentPlayerIndex ?? 0
@@ -133,7 +124,8 @@ export default function JudgeMatch() {
     function throwDart(notation: string) {
         if (pendingDarts.length >= 3 || submitting) return
         const newDarts = [...pendingDarts, notation]
-        socket.emit(EVENTS.DART_THROWN, { matchId: id!, notation, playerId: currentPlayerId, remainingBefore: remaining })
+        const dartObjects = newDarts.map(n => ({ notation: n, score: scoreFromNotation(n) }))
+        socket.emit(EVENTS.DART_THROWN, { matchId: id!, darts: dartObjects, playerId: currentPlayerId, remainingBefore: remaining })
         setPendingDarts(newDarts)
         setModifier(null)
         if (isTurnTerminal(newDarts, remaining, doubleOut)) {
@@ -144,7 +136,10 @@ export default function JudgeMatch() {
     async function undoLast() {
         setError('')
         if (pendingDarts.length > 0) {
-            setPendingDarts(prev => prev.slice(0, -1))
+            const newDarts = pendingDarts.slice(0, -1)
+            const dartObjects = newDarts.map(n => ({ notation: n, score: scoreFromNotation(n) }))
+            socket.emit(EVENTS.DART_THROWN, { matchId: id!, darts: dartObjects, playerId: currentPlayerId, remainingBefore: remaining })
+            setPendingDarts(newDarts)
             return
         }
         try {
@@ -182,14 +177,41 @@ export default function JudgeMatch() {
     const bullLabel = modifier === 'Double' ? 'DBull' : 'Bull'
     const bullSub = modifier === 'Double' ? '50' : '25'
 
+    const winnerName = matchState?.winnerId ? getName(matchState.winnerId) : ''
+
     return (
-        <div className="h-[100dvh] overflow-hidden bg-gray-950 text-white flex flex-col">
+        <div className="h-[100dvh] overflow-hidden bg-gray-950 text-white flex flex-col relative">
+            {/* Win confirmation overlay */}
+            {matchState?.status === 'match_complete' && matchState.winnerId && (
+                <div className="absolute inset-0 bg-gray-950/95 backdrop-blur-sm flex flex-col items-center justify-center z-50 px-8 animate-fade-in">
+                    <div className="text-center mb-10">
+                        <p className="text-xs font-semibold uppercase tracking-widest text-yellow-500 mb-4">Match Complete</p>
+                        <p className="text-4xl font-bold mb-2">{winnerName}</p>
+                        <p className="text-gray-500 text-sm">wins the match</p>
+                    </div>
+                    <div className="flex flex-col gap-3 w-full max-w-xs">
+                        <button
+                            onClick={() => match?.isQuickMatch ? navigate('/quick-match') : navigate('/judge')}
+                            className="w-full py-4 rounded-2xl bg-white text-gray-950 font-bold text-lg">
+                            Confirm &amp; Continue
+                        </button>
+                        <button
+                            onClick={undoLast}
+                            disabled={submitting}
+                            className="w-full py-3 rounded-2xl bg-red-950 border border-red-900 text-red-400 font-semibold text-sm disabled:opacity-40">
+                            Undo Last Throw
+                        </button>
+                    </div>
+                </div>
+            )}
             {/* Header */}
             <div className="bg-gray-900 border-b border-gray-800 px-4 pb-5"
                 style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}>
-                <div className="mb-4"><HomeButton /></div>
+                <div className="mb-4">
+                    <BackButton to={match.isQuickMatch ? '/quick-match' : '/judge'} label={match.isQuickMatch ? 'Quick Match' : 'Judge'} />
+                </div>
                 <div ref={playerScrollRef} className="overflow-x-auto -mx-4 px-4">
-                <div className="flex gap-2 min-w-max">
+                <div className="flex gap-2 min-w-max justify-center w-full">
                     {match.players.map((p, i) => {
                         const active = i === currentPlayerIndex
                         const displayScore = active && (pendingDarts.length > 0 || hasInProgress)
@@ -202,11 +224,11 @@ export default function JudgeMatch() {
                                 active ? 'bg-gray-800 ring-1 ring-gray-600' : 'opacity-30'
                             }`}>
                                 <p className="text-xs text-gray-400 mb-1 truncate">{getName(p)}</p>
-                                <p className={`text-5xl font-bold tabular-nums ${isBust ? 'text-red-400' : ''}`}>
+                                <p key={displayScore} className={`text-5xl font-bold tabular-nums animate-pop ${isBust ? 'text-red-400' : ''}`}>
                                     {displayScore}
                                 </p>
                                 <div className="flex justify-center gap-3 mt-1">
-                                    <p className="text-xs text-gray-500">{matchState?.legsWon[i] ?? 0} legs</p>
+                                    <p className="text-xs text-gray-500">{matchState?.legsWon[i] ?? 0}/{matchState?.rules.legsToWin ?? match?.ruleLegsToWin ?? '?'} legs</p>
                                     {setsToWin > 0 && (
                                         <p className="text-xs text-gray-500">{matchState?.setsWon[i] ?? 0} sets</p>
                                     )}
@@ -248,8 +270,8 @@ export default function JudgeMatch() {
             {/* Pending darts */}
             <div className="flex justify-center gap-3 px-4 py-3 bg-gray-950 border-b border-gray-800">
                 {[0, 1, 2].map(i => (
-                    <div key={i} className={`flex-1 max-w-[80px] h-14 rounded-xl flex items-center justify-center text-sm font-bold border ${
-                        displayDarts[i] ? 'bg-gray-800 border-gray-600 text-white' : 'bg-gray-900 border-gray-800 text-gray-600'
+                    <div key={displayDarts[i] ?? i} className={`flex-1 max-w-[80px] h-14 rounded-xl flex items-center justify-center text-sm font-bold border transition-colors ${
+                        displayDarts[i] ? 'bg-gray-800 border-gray-600 text-white animate-pop' : 'bg-gray-900 border-gray-800 text-gray-600'
                     }`}>
                         {displayDarts[i] ?? '—'}
                     </div>
