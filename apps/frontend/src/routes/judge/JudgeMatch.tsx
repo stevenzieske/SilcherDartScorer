@@ -270,7 +270,7 @@ export default function JudgeMatch() {
             {/* Pending darts */}
             <div className="flex justify-center gap-3 px-4 py-3 bg-gray-950 border-b border-gray-800">
                 {[0, 1, 2].map(i => (
-                    <div key={displayDarts[i] ?? i} className={`flex-1 max-w-[80px] h-14 rounded-xl flex items-center justify-center text-sm font-bold border transition-colors ${
+                    <div key={`${i}:${displayDarts[i] ?? ''}`} className={`flex-1 max-w-[80px] h-14 rounded-xl flex items-center justify-center text-sm font-bold border transition-colors ${
                         displayDarts[i] ? 'bg-gray-800 border-gray-600 text-white animate-pop' : 'bg-gray-900 border-gray-800 text-gray-600'
                     }`}>
                         {displayDarts[i] ?? '—'}
