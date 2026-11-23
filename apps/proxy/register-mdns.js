@@ -26,50 +26,59 @@ if (!lanIp) {
 }
 
 const portSuffix = PORT === 80 ? '' : `:${PORT}`
-console.log(`\n  ✓  http://${fqdn}${portSuffix}`)
-console.log(`     accessible from every device on this network\n`)
 
-const child = spawn(
-    'dns-sd',
-    ['-P', 'Dart Scorer', '_http._tcp', 'local', String(PORT), fqdn, lanIp, ''],
-    { stdio: ['ignore', 'pipe', 'pipe'] }
-)
+// Kill any leftover dns-sd registrations for this service from previous runs.
+// These linger when the process is killed without cleanup (e.g. SIGKILL, crash).
+const cleanup = spawn('pkill', ['-f', 'dns-sd.*Dart Scorer'], { stdio: 'ignore' })
+cleanup.on('close', () => startRegistration())
 
-child.stdout.on('data', d => process.stdout.write(d))
-child.stderr.on('data', d => process.stderr.write(d))
+function startRegistration() {
+    console.log(`\n  ✓  http://${fqdn}${portSuffix}`)
+    console.log(`     accessible from every device on this network\n`)
 
-child.on('error', err => {
-    if (err.code === 'ENOENT') {
-        console.warn('dns-sd not found — mDNS skipped (macOS only)')
-    } else {
-        console.error('mDNS error:', err.message)
+    const child = spawn(
+        'dns-sd',
+        ['-P', 'Dart Scorer', '_http._tcp', 'local', String(PORT), fqdn, lanIp, ''],
+        { stdio: ['ignore', 'pipe', 'pipe'] }
+    )
+
+    child.stdout.on('data', d => process.stdout.write(d))
+    child.stderr.on('data', d => process.stderr.write(d))
+
+    child.on('error', err => {
+        if (err.code === 'ENOENT') {
+            console.warn('dns-sd not found — mDNS skipped (macOS only)')
+        } else {
+            console.error('mDNS error:', err.message)
+        }
+        keepAlive()
+    })
+
+    // dns-sd exited on its own (e.g. name conflict). Log and stay alive so
+    // docker compose down is NOT triggered until the user presses Ctrl+C.
+    child.on('close', (code, signal) => {
+        if (signal) return // killed by our own stop() — normal shutdown
+        if (code !== 0) {
+            console.warn(`\n  ⚠  ${fqdn} is already claimed by another device — using IP instead.`)
+            console.warn(`     Try a different name:  MDNS_HOST=silcher pnpm start\n`)
+            console.log(`  ✓  App is running. Press Ctrl+C to stop.`)
+            console.log(`     http://localhost${portSuffix}`)
+            const lanIp2 = getLanIp()
+            if (lanIp2) console.log(`     http://${lanIp2}${portSuffix}\n`)
+        }
+        keepAlive()
+    })
+
+    let _keepAliveTimer
+    function keepAlive() {
+        _keepAliveTimer = setInterval(() => {}, 60_000)
     }
-    // Keep process alive so Docker stays up — mDNS failure is non-fatal
-    keepAlive()
-})
 
-// dns-sd exited on its own (e.g. name conflict). Log and stay alive so
-// docker compose down is NOT triggered until the user presses Ctrl+C.
-child.on('close', (code, signal) => {
-    if (signal) return // killed by our own stop() — normal shutdown
-    if (code !== 0) {
-        console.warn(`\n  ⚠  mDNS registration failed (dns-sd exited with code ${code}).`)
-        console.warn(`     Try a different hostname:  MDNS_HOST=silcher pnpm start`)
-        console.warn(`     App still running at http://localhost${PORT === 80 ? '' : ':' + PORT}\n`)
+    const stop = () => {
+        clearInterval(_keepAliveTimer)
+        child.kill()
+        process.exit(0)
     }
-    keepAlive()
-})
-
-let _keepAliveTimer
-function keepAlive() {
-    // Hold the event loop open until SIGINT/SIGTERM
-    _keepAliveTimer = setInterval(() => {}, 60_000)
+    process.on('SIGINT',  stop)
+    process.on('SIGTERM', stop)
 }
-
-const stop = () => {
-    clearInterval(_keepAliveTimer)
-    child.kill()
-    process.exit(0)
-}
-process.on('SIGINT',  stop)
-process.on('SIGTERM', stop)
