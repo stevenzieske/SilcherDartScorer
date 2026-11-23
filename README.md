@@ -49,15 +49,20 @@ graph TD
         C[Stats\nbrowser]
     end
 
+    subgraph Host Machine
+        P[Node.js Proxy\nPort 80\napps/proxy/index.js]
+    end
+
     subgraph Docker
         FE[Frontend\nVite + React\nPort 5173]
         BE[Backend\nNestJS\nPort 3000]
         DB[(MongoDB\nPort 27017)]
     end
 
-    A -- HTTP + WebSocket --> FE
-    B -- HTTP + WebSocket --> FE
-    C -- HTTP --> FE
+    A -- HTTP + WebSocket\ndarts.local / localhost --> P
+    B -- HTTP + WebSocket --> P
+    C -- HTTP --> P
+    P -- localhost:5173 --> FE
     FE -- /api proxy --> BE
     FE -- /socket.io proxy --> BE
     BE -- Mongoose --> DB
@@ -78,14 +83,14 @@ graph LR
 
 ## Requirements
 
-| Tool | Version |
-|------|---------|
-| Docker | 24+ |
-| Docker Compose | 2.20+ |
-| Node.js (dev only) | 22+ |
-| pnpm (dev only) | 9+ |
+| Tool | Version | Required for |
+|------|---------|-------------|
+| Docker | 24+ | Running the app |
+| Docker Compose | 2.20+ | Running the app |
+| Node.js | 22+ | Running the app + dev |
+| pnpm | 9+ | Running the app + dev |
 
-No other dependencies are needed to run via Docker.
+Node.js and pnpm are required at runtime because the host-level proxy (`apps/proxy/index.js`) runs outside Docker and handles mDNS registration and LAN routing.
 
 ---
 
@@ -104,20 +109,33 @@ cd SilcherDartScorer
 cp .env.example .env   # or create .env manually (see Configuration)
 ```
 
-### 3 — Build and start with Docker
+### 3 — Install proxy dependencies
 
 ```bash
-docker compose up --build
+cd apps/proxy && npm install && cd ../..
+```
+
+### 4 — Build Docker images
+
+```bash
+docker compose build
 ```
 
 First build takes ~2 minutes (installs all dependencies, compiles the shared package). Subsequent starts are fast.
 
-| Service | URL |
-|---------|-----|
-| Frontend | http://localhost:5173 |
-| Backend API | http://localhost:3000 |
+### 5 — Start the app
 
-To access from other devices on the same Wi-Fi network, replace `localhost` with the host machine's IP address (set `HOST_IP` in `.env`).
+```bash
+pnpm start
+```
+
+| Access point | URL |
+|--------------|-----|
+| This machine | http://localhost |
+| Any LAN device (macOS) | http://darts.local |
+| Any LAN device (IP) | http://&lt;your-ip&gt; |
+
+The proxy automatically registers `darts.local` via mDNS (macOS only). To use a different hostname, set `MDNS_HOST=myname` before starting.
 
 ---
 
@@ -129,7 +147,9 @@ All configuration lives in `.env` at the project root.
 |----------|---------|-------------|
 | `MONGO_URI` | `mongodb://mongodb:27017/dart_tracker` | MongoDB connection string |
 | `ADMIN_PIN` | `1234` | PIN required for the admin area and judge functions |
-| `HOST_IP` | `192.168.178.33` | LAN IP shown as QR code on the spectator screen |
+| `HOST_IP` | _(auto)_ | LAN IP shown as QR code on the spectator screen; auto-detected if unset |
+| `MDNS_HOST` | `darts` | mDNS hostname (advertised as `<name>.local` on the LAN) |
+| `PORT` | `80` | Port the host proxy listens on |
 
 > **Security note**: `ADMIN_PIN` is sent as a Bearer token. Change this before using on any shared network.
 
@@ -137,33 +157,40 @@ All configuration lives in `.env` at the project root.
 
 ## Running the App
 
-### Production-like (Docker)
+### Production (Docker + host proxy)
 
 ```bash
-docker compose up
+pnpm start
+```
+
+Starts all Docker services, then launches the host-level proxy on port 80. The proxy handles LAN routing and registers `darts.local` via mDNS (macOS). Press **Ctrl+C** to stop everything cleanly.
+
+The first page load after startup may take 15–30 seconds while Vite compiles inside the container. Watch progress with:
+
+```bash
+docker logs -f dart-frontend
 ```
 
 ### Development (hot-reload)
 
 ```bash
-# Terminal 1 — shared package (must build first)
+# Terminal 1 — shared package (must build first, re-run after shared changes)
 cd packages/shared && pnpm build
 
-# Terminal 2 — backend
-cd apps/backend && pnpm start:dev
-
-# Terminal 3 — frontend
-cd apps/frontend && pnpm dev
+# Terminal 2 — all services + proxy
+pnpm dev
 ```
+
+`pnpm dev` starts the backend, frontend dev server, and the host proxy together. All three hot-reload on file changes.
 
 ### Run tests
 
 ```bash
-# All backend tests
+# Backend unit + integration tests
 cd apps/backend && pnpm test
 
-# Specific suite
-cd apps/backend && pnpm test -- --testPathPatterns=league-scheduler
+# Frontend UI/layout tests (Playwright)
+cd apps/frontend && pnpm test:ui
 ```
 
 ---
@@ -776,6 +803,11 @@ Accessible from `/admin` → Data section.
 SilcherDartScorer/
 ├── docker-compose.yml
 ├── .env
+├── CHANGELOG.md
+├── apps/
+│   └── proxy/
+│       ├── index.js              # Host proxy: port 80 → Docker frontend + mDNS (dev + prod)
+│       └── register-mdns.js      # Standalone mDNS registration (legacy; kept for reference)
 ├── packages/
 │   └── shared/                      # compiled TypeScript library (@dart/shared)
 │       └── src/

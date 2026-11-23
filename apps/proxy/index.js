@@ -55,23 +55,27 @@ server.on('error', err => {
     process.exit(1)
 })
 
-server.listen(PORT, '0.0.0.0', () => {
-    const lanIp = getLanIp()
-    const fqdn  = `${HOSTNAME}.local`
+// Kill any leftover dns-sd registrations from previous runs before starting.
+const _cleanup = spawn('pkill', ['-f', 'dns-sd.*Dart Scorer'], { stdio: 'ignore' })
+_cleanup.on('close', () => {
+    server.listen(PORT, '0.0.0.0', () => {
+        const lanIp = getLanIp()
+        const fqdn  = `${HOSTNAME}.local`
 
-    console.log(`\nProxy  :${PORT}  →  ${UPSTREAM}`)
+        console.log(`\nProxy  :${PORT}  →  ${UPSTREAM}`)
 
-    if (!lanIp) {
-        console.warn('No LAN IP found — mDNS registration skipped.')
-        console.log(`Local access only: http://localhost:${PORT}\n`)
-        return
-    }
+        if (!lanIp) {
+            console.warn('No LAN IP found — mDNS registration skipped.')
+            console.log(`Local access only: http://localhost:${PORT}\n`)
+            return
+        }
 
-    registerMdns({ ip: lanIp, port: PORT, fqdn })
+        registerMdns({ ip: lanIp, port: PORT, fqdn })
 
-    const portSuffix = PORT === 80 ? '' : `:${PORT}`
-    console.log(`\n  ✓  http://${fqdn}${portSuffix}`)
-    console.log(`     accessible from every device on this network\n`)
+        const portSuffix = PORT === 80 ? '' : `:${PORT}`
+        console.log(`\n  ✓  http://${fqdn}${portSuffix}`)
+        console.log(`     accessible from every device on this network\n`)
+    })
 })
 
 // ── mDNS registration (macOS dns-sd) ─────────────────────────────────────────
