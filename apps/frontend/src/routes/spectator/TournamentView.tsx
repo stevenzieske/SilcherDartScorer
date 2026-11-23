@@ -18,7 +18,7 @@ export default function TournamentView() {
     const [allMatches, setAllMatches] = useState<Match[]>([])
     const [matchStates, setMatchStates] = useState<Record<string, MatchState>>({})
     const [inProgressByMatch, setInProgressByMatch] = useState<Record<string, DartInProgressData>>({})
-    const [networkUrl, setNetworkUrl] = useState(window.location.origin)
+    const networkUrl = 'http://darts.local'
     const [celebratingMatches, setCelebratingMatches] = useState<Record<string, { winnerId: string; exiting: boolean }>>({})
 
     // Resolve tournament ID — from URL or find active
@@ -29,13 +29,6 @@ export default function TournamentView() {
             if (active) setTournamentId(active._id)
         })
     }, [id])
-
-    // QR code network URL
-    useEffect(() => {
-        http.get<{ ip: string | null }>('/network-ip').then(r => {
-            if (r.data.ip) setNetworkUrl(`http://${r.data.ip}:${window.location.port || '5173'}`)
-        }).catch(() => {})
-    }, [])
 
     // Load tournament + all matches
     useEffect(() => {
@@ -268,7 +261,7 @@ export default function TournamentView() {
                                             const getScore = (i: number) => i === currentIdx && inProg ? inProg.runningRemaining : (state?.currentLeg.remaining[i] ?? '—')
                                             const turnStartRem = inProg?.remainingBefore ?? (state?.currentLeg.remaining[currentIdx] ?? 0)
                                             const thrown = inProg?.dartsThrown.map(d => d.notation) ?? []
-                                            const checkout = buildCheckoutDisplay(turnStartRem, thrown, inProg?.runningRemaining ?? (state?.currentLeg.remaining[currentIdx] ?? 0))
+                                            const checkout = buildCheckoutDisplay(turnStartRem, thrown, inProg?.runningRemaining ?? (state?.currentLeg.remaining[currentIdx] ?? 0), state?.rules.doubleOut ?? true)
                                             return (
                                                 <div key={m._id}
                                                     onClick={() => tournamentId && navigate(`/spectator/tournaments/${tournamentId}/matches/${m._id}`)}
@@ -350,7 +343,7 @@ export default function TournamentView() {
                                             const getScore = (i: number) => i === currentIdx && inProg ? inProg.runningRemaining : (state?.currentLeg.remaining[i] ?? '—')
                                             const turnStartRem = inProg?.remainingBefore ?? (state?.currentLeg.remaining[currentIdx] ?? 0)
                                             const thrown = inProg?.dartsThrown.map(d => d.notation) ?? []
-                                            const checkout = buildCheckoutDisplay(turnStartRem, thrown, inProg?.runningRemaining ?? (state?.currentLeg.remaining[currentIdx] ?? 0))
+                                            const checkout = buildCheckoutDisplay(turnStartRem, thrown, inProg?.runningRemaining ?? (state?.currentLeg.remaining[currentIdx] ?? 0), state?.rules.doubleOut ?? true)
                                             return (
                                                 <div key={m._id}
                                                     onClick={() => tournamentId && navigate(`/spectator/tournaments/${tournamentId}/matches/${m._id}`)}
@@ -548,6 +541,7 @@ export default function TournamentView() {
                                     <th className="text-center pb-2">P</th>
                                     <th className="text-center pb-2">W</th>
                                     <th className="text-center pb-2">L</th>
+                                    <th className="text-center pb-2">LD</th>
                                     <th className="text-center pb-2">Pts</th>
                                 </tr>
                             </thead>
@@ -559,12 +553,13 @@ export default function TournamentView() {
                                         if (i === cutoff && cutoff < standings.length) {
                                             rows.push(
                                                 <tr key="cutoff">
-                                                    <td colSpan={6} className="p-0">
+                                                    <td colSpan={7} className="p-0">
                                                         <div className="h-px bg-red-600" />
                                                     </td>
                                                 </tr>
                                             )
                                         }
+                                        const ld = s.legDifference ?? 0
                                         rows.push(
                                             <tr
                                                 key={s.playerId}
@@ -575,6 +570,9 @@ export default function TournamentView() {
                                                 <td className="py-2 text-center text-gray-400">{s.played}</td>
                                                 <td className="py-2 text-center text-green-400">{s.won}</td>
                                                 <td className="py-2 text-center text-red-400">{s.lost}</td>
+                                                <td className={`py-2 text-center text-xs ${ld > 0 ? 'text-green-400' : ld < 0 ? 'text-red-400' : 'text-gray-500'}`}>
+                                                    {ld > 0 ? `+${ld}` : ld}
+                                                </td>
                                                 <td className="py-2 text-center font-bold">{s.points}</td>
                                             </tr>
                                         )

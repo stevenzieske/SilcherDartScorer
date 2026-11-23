@@ -11,7 +11,7 @@ import type { MatchEvent, MatchRules, TurnData } from '@dart/shared'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function makeEventDoc(partial: Partial<MatchEvent> & { sequence: number }) {
+function makeEventDoc(partial: Partial<MatchEvent> & { sequence: number; type: MatchEventType }) {
     const obj: MatchEvent = {
         _id: `evt-${partial.sequence}`,
         matchId: 'match1',
@@ -214,7 +214,8 @@ describe('MatchesService', () => {
         it('appends MatchEnded and sets winnerId when legsToWin is reached', async () => {
             // p2 already won leg 1. In leg 2, p2 (index 1) starts first (alternates from leg 1).
             // p2 throws to leave 40 remaining, p1 throws, then p2 checkouts with D20 → match over.
-            const match = setupMatch({ legsWon: [0, 1] }, [
+            const baseEvents = [
+                makeEventDoc({ sequence: 1, type: MatchEventType.MatchStarted }),
                 makeEventDoc({ sequence: 2, type: MatchEventType.LegEnded, data: { winnerId: 'p2' } }),
                 makeEventDoc({ sequence: 3, type: MatchEventType.LegStarted }),
                 // Leg 2: p2 (index 1) starts — throws to leave 40 remaining
@@ -233,7 +234,28 @@ describe('MatchesService', () => {
                         isBust: false, isCheckout: false,
                     }
                 }),
-            ])
+            ]
+
+            // After the Checkout event is appended, the second findAllForMatch call
+            // (for postLegState) must include it plus the LegEnded event so the
+            // rebuilt state reflects legsWon[1] = 2 and triggers match completion.
+            const checkoutTurn: TurnData = {
+                playerId: 'p2', legNumber: 2,
+                darts: [{ notation: 'D20', score: 40 }],
+                turnScore: 40, remainingBefore: 40, remainingAfter: 0,
+                isBust: false, isCheckout: true,
+            }
+            const eventsWithCheckout = [
+                ...baseEvents,
+                makeEventDoc({ sequence: 6, type: MatchEventType.Checkout, data: checkoutTurn }),
+                makeEventDoc({ sequence: 7, type: MatchEventType.LegEnded, data: { winnerId: 'p2' } }),
+            ]
+
+            const match = makeMockMatch({ legsWon: [0, 1] })
+            mockFindById.mockReturnValue({ exec: jest.fn().mockResolvedValue(match) })
+            mockMatchEventsService.findAllForMatch
+                .mockResolvedValueOnce(baseEvents)        // initial state rebuild
+                .mockResolvedValue(eventsWithCheckout)    // postLegState + final broadcast
 
             await service.submitThrow('match1', 'judge1', ['D20'],
                 DEFAULT_RULES.startingScore, DEFAULT_RULES.legsToWin, DEFAULT_RULES.doubleIn, DEFAULT_RULES.doubleOut, 0)

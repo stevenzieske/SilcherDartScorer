@@ -39,7 +39,7 @@ function statusBadge(m: Match) {
         const winner = m.winnerId === m.players[0] ? 0 : 1
         const score = winner === 0
             ? `${m.legsWon[0]}–${m.legsWon[1]}`
-            : `${m.legsWon[0]}–${m.legsWon[1]}`
+            : `${m.legsWon[1]}–${m.legsWon[0]}`
         return <span className="text-xs text-gray-500 tabular-nums">{score}</span>
     }
     if (m.status === MatchStatus.Active) {

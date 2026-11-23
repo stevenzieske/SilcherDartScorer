@@ -1,0 +1,13 @@
+{
+  "name": "@dart/proxy",
+  "version": "0.0.1",
+  "private": true,
+  "description": "mDNS advertisement + port-80 proxy for darts.local",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "http-proxy": "^1.18.1"
+  }
+}

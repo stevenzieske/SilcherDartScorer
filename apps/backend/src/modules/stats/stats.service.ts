@@ -16,6 +16,8 @@ interface RawStats {
     checkoutAttempts: number
     checkoutHits: number
     oneEighties: number
+    hundredPlus: number
+    hundredFortyPlus: number
     highestCheckout: number
     bestLegDarts: number
     matchesPlayed: number
@@ -24,7 +26,7 @@ interface RawStats {
 }
 
 function emptyRaw(): RawStats {
-    return { dartsThrown: 0, turnScoreTotal: 0, checkoutAttempts: 0, checkoutHits: 0, oneEighties: 0, highestCheckout: 0, bestLegDarts: 0, matchesPlayed: 0, matchesWon: 0, legsWon: 0 }
+    return { dartsThrown: 0, turnScoreTotal: 0, checkoutAttempts: 0, checkoutHits: 0, oneEighties: 0, hundredPlus: 0, hundredFortyPlus: 0, highestCheckout: 0, bestLegDarts: 0, matchesPlayed: 0, matchesWon: 0, legsWon: 0 }
 }
 
 function avg3(raw: RawStats): number {
@@ -33,6 +35,16 @@ function avg3(raw: RawStats): number {
 
 function checkoutRate(raw: RawStats): number {
     return raw.checkoutAttempts > 0 ? Math.round((raw.checkoutHits / raw.checkoutAttempts) * 100 * 10) / 10 : 0
+}
+
+function groupEventsByMatch(events: MatchEventDocument[]): Map<string, MatchEventDocument[]> {
+    const map = new Map<string, MatchEventDocument[]>()
+    for (const event of events) {
+        const list = map.get(event.matchId) ?? []
+        list.push(event)
+        map.set(event.matchId, list)
+    }
+    return map
 }
 
 @Injectable()
@@ -44,17 +56,18 @@ export class StatsService {
         @InjectModel(TournamentModel.name) private readonly tournamentModel: Model<TournamentDocument>,
     ) { }
 
-    private async accumulateMatchStats(playerId: string, matches: MatchDocument[]): Promise<RawStats> {
+    private accumulateMatchStats(
+        playerId: string,
+        matches: MatchDocument[],
+        eventsByMatch: Map<string, MatchEventDocument[]>,
+    ): RawStats {
         const stats = emptyRaw()
 
         for (const match of matches) {
             stats.matchesPlayed++
             if (match.winnerId === playerId) stats.matchesWon++
 
-            const events = await this.eventModel
-                .find({ matchId: match._id.toString() })
-                .sort({ sequence: 1 })
-                .exec()
+            const events = eventsByMatch.get(match._id.toString()) ?? []
 
             const legDarts = new Map<number, number>()
             const legWinners = new Map<number, string>()
@@ -67,6 +80,8 @@ export class StatsService {
                     stats.dartsThrown += turn.darts.length
                     if (!turn.isBust) stats.turnScoreTotal += turn.turnScore
                     if (turn.turnScore === 180) stats.oneEighties++
+                    if (turn.turnScore >= 140) stats.hundredFortyPlus++
+                    if (turn.turnScore >= 100) stats.hundredPlus++
                     if (turn.remainingBefore <= 170) stats.checkoutAttempts++
                     if (turn.isCheckout) {
                         stats.checkoutHits++
@@ -104,26 +119,53 @@ export class StatsService {
             .find({ players: playerId, status: MatchStatus.Completed })
             .exec()
 
+        // Load all events in a single batch query
+        const allMatchIds = allMatches.map(m => m._id.toString())
+        const allEvents = allMatchIds.length > 0
+            ? await this.eventModel.find({ matchId: { $in: allMatchIds } }).sort({ matchId: 1, sequence: 1 }).exec()
+            : []
+        const eventsByMatch = groupEventsByMatch(allEvents)
+
+        // Bucket matches by tournament (or quick match)
         const byTournament = new Map<string, MatchDocument[]>()
+        const quickMatches: MatchDocument[] = []
         for (const match of allMatches) {
-            const tid = match.tournamentId
-            if (!tid) continue  // skip quick matches (no tournament)
-            if (!byTournament.has(tid)) byTournament.set(tid, [])
-            byTournament.get(tid)!.push(match)
+            if (!match.tournamentId) {
+                quickMatches.push(match)
+                continue
+            }
+            if (!byTournament.has(match.tournamentId)) byTournament.set(match.tournamentId, [])
+            byTournament.get(match.tournamentId)!.push(match)
         }
 
-        const overall = await this.accumulateMatchStats(playerId, allMatches)
+        const overall = this.accumulateMatchStats(playerId, allMatches, eventsByMatch)
+
+        // Load tournament documents in a single batch query
+        const tournamentIds = Array.from(byTournament.keys())
+        const tournaments = tournamentIds.length > 0
+            ? await this.tournamentModel.find({ _id: { $in: tournamentIds } }).exec()
+            : []
+        const tournamentById = new Map(tournaments.map(t => [t._id.toString(), t as TournamentDocument]))
 
         const tournamentHistory: Array<{
-            tournamentId: string; tournamentName: string; status: string
-            placement: number | null; matchesPlayed: number; matchesWon: number
-            legsWon: number; average: number; highestCheckout: number; date: string
+            tournamentId: string
+            tournamentName: string
+            status: string
+            placement: number | null
+            matchesPlayed: number
+            matchesWon: number
+            legsWon: number
+            average: number
+            highestCheckout: number
+            date: string
+            isQuickMatch: boolean
         }> = []
+
         for (const [tid, matches] of byTournament) {
-            const tournament = await this.tournamentModel.findById(tid).exec()
+            const tournament = tournamentById.get(tid)
             if (!tournament) continue
-            const tStats = await this.accumulateMatchStats(playerId, matches)
-            const placement = tournament.placements?.[playerId] ?? null
+            const tStats = this.accumulateMatchStats(playerId, matches, eventsByMatch)
+            const placement = (tournament.placements as Record<string, number> | undefined)?.[playerId] ?? null
             const tObj = tournament.toObject() as { createdAt?: string } & typeof tournament
             tournamentHistory.push({
                 tournamentId: tid,
@@ -136,6 +178,24 @@ export class StatsService {
                 average: avg3(tStats),
                 highestCheckout: tStats.highestCheckout,
                 date: tournament.startedAt ?? (tObj.createdAt ?? ''),
+                isQuickMatch: false,
+            })
+        }
+
+        for (const match of quickMatches) {
+            const qStats = this.accumulateMatchStats(playerId, [match], eventsByMatch)
+            tournamentHistory.push({
+                tournamentId: match._id.toString(),
+                tournamentName: 'Quick Match',
+                status: 'completed',
+                placement: null,
+                matchesPlayed: qStats.matchesPlayed,
+                matchesWon: qStats.matchesWon,
+                legsWon: qStats.legsWon,
+                average: avg3(qStats),
+                highestCheckout: qStats.highestCheckout,
+                date: match.endedAt ?? match.startedAt ?? '',
+                isQuickMatch: true,
             })
         }
 
@@ -147,6 +207,8 @@ export class StatsService {
                 ...overall,
                 average: avg3(overall),
                 checkoutRate: checkoutRate(overall),
+                hundredPlus: overall.hundredPlus,
+                hundredFortyPlus: overall.hundredFortyPlus,
             },
             tournamentHistory,
         }
@@ -160,18 +222,22 @@ export class StatsService {
             .find({ tournamentId, status: MatchStatus.Completed })
             .exec()
 
-        const perPlayer = new Map<string, RawStats & { playerForLeg: Map<number, number> }>()
+        // Load all events in a single batch query
+        const matchIds = matches.map(m => m._id.toString())
+        const allEvents = matchIds.length > 0
+            ? await this.eventModel.find({ matchId: { $in: matchIds } }).sort({ matchId: 1, sequence: 1 }).exec()
+            : []
+        const eventsByMatch = groupEventsByMatch(allEvents)
+
+        const perPlayer = new Map<string, RawStats>()
 
         function getPlayer(pid: string) {
-            if (!perPlayer.has(pid)) perPlayer.set(pid, { ...emptyRaw(), playerForLeg: new Map() })
+            if (!perPlayer.has(pid)) perPlayer.set(pid, emptyRaw())
             return perPlayer.get(pid)!
         }
 
         for (const match of matches) {
-            const events = await this.eventModel
-                .find({ matchId: match._id.toString() })
-                .sort({ sequence: 1 })
-                .exec()
+            const events = eventsByMatch.get(match._id.toString()) ?? []
 
             const legDarts = new Map<string, number>()
             const legWinners = new Map<number, string>()
@@ -184,6 +250,8 @@ export class StatsService {
                     s.dartsThrown += turn.darts.length
                     if (!turn.isBust) s.turnScoreTotal += turn.turnScore
                     if (turn.turnScore === 180) s.oneEighties++
+                    if (turn.turnScore >= 140) s.hundredFortyPlus++
+                    if (turn.turnScore >= 100) s.hundredPlus++
                     if (turn.remainingBefore <= 170) s.checkoutAttempts++
                     if (turn.isCheckout) {
                         s.checkoutHits++
@@ -216,25 +284,32 @@ export class StatsService {
             checkoutRate: checkoutRate(s),
             oneEighties: s.oneEighties,
             bestLegDarts: s.bestLegDarts,
+            hundredPlus: s.hundredPlus,
+            hundredFortyPlus: s.hundredFortyPlus,
         }))
 
         const best = (key: keyof typeof entries[0], asc = false) => {
             const filtered = entries.filter(e => (e[key] as number) > 0)
             if (!filtered.length) return null
-            return [...filtered].sort((a, b) =>
+            const sorted = [...filtered].sort((a, b) =>
                 asc ? (a[key] as number) - (b[key] as number) : (b[key] as number) - (a[key] as number)
-            )[0]
+            )
+            const topValue = sorted[0][key] as number
+            return sorted.filter(e => (e[key] as number) === topValue)
         }
 
         return {
             tournamentId,
             tournamentName: tournament.name,
             totalMatches: matches.length,
+            allEntries: entries,
             highestAverage: best('average'),
             highestCheckout: best('highestCheckout'),
             bestCheckoutRate: best('checkoutRate'),
             bestLeg: best('bestLegDarts', true),
             most180s: best('oneEighties'),
+            most100Plus: best('hundredPlus'),
+            most140Plus: best('hundredFortyPlus'),
         }
     }
 }

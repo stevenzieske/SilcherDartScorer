@@ -182,8 +182,11 @@ function getCheckout(remaining) {
  * Returns the full checkout route with each dart marked done or pending.
  * When thrown darts match the checkout prefix the full route stays visible
  * throughout the turn.  If the player deviates the route recalculates.
+ * Pass doubleOut=false to suppress hints for straight-out matches.
  */
-function buildCheckoutDisplay(turnStartRemaining, thrownNotations, currentRemaining) {
+function buildCheckoutDisplay(turnStartRemaining, thrownNotations, currentRemaining, doubleOut = true) {
+    if (!doubleOut)
+        return null;
     if (currentRemaining < 0)
         return null;
     const route = getCheckout(turnStartRemaining);

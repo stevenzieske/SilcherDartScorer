@@ -51,6 +51,8 @@ describe('parseNotation', () => {
         it('throws on random string', () => expect(() => parseNotation('XYZ')).toThrow(ParseError))
         it('throws on negative number', () => expect(() => parseNotation('-5')).toThrow(ParseError))
         it('throws on D0', () => expect(() => parseNotation('D0')).toThrow(ParseError))
+        it('throws on D25 (no double of outer bull)', () => expect(() => parseNotation('D25')).toThrow(ParseError))
+        it('throws on T25', () => expect(() => parseNotation('T25')).toThrow(ParseError))
     })
 
     describe('ParseError contains the invalid notation', () => {

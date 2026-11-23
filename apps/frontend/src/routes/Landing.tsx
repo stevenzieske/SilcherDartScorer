@@ -1,8 +1,10 @@
 import { useNavigate } from 'react-router-dom'
 import { socket } from '../socket/socket.client'
+import { useThemeStore } from '../stores/theme.store'
 
 export default function Landing() {
     const navigate = useNavigate()
+    const { theme, toggle } = useThemeStore()
 
     function enter(path: string) {
         if (!socket.connected) socket.connect()
@@ -11,25 +13,34 @@ export default function Landing() {
 
     return (
         <div className="h-[100dvh] overflow-hidden bg-gray-950 flex flex-col">
-            {/* Top-right buttons */}
-            <div className="flex justify-end items-center gap-2 px-4"
+            {/* Top bar */}
+            <div className="flex justify-between items-center px-4"
                 style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
                 <button
-                    onClick={() => enter('/admin/players')}
-                    className="bg-blue-950 hover:bg-blue-900 border border-blue-900 text-blue-400 font-semibold text-sm px-4 py-2 rounded-xl transition-colors">
-                    Players
+                    onClick={toggle}
+                    title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                    className="w-9 h-9 flex items-center justify-center rounded-xl bg-gray-900 hover:bg-gray-800 border border-gray-800 transition-colors text-base">
+                    {theme === 'dark' ? '☀' : '☾'}
                 </button>
-                <button
-                    onClick={() => enter('/admin/login')}
-                    className="bg-red-950 hover:bg-red-900 border border-red-900 text-red-400 font-semibold text-sm px-4 py-2 rounded-xl transition-colors">
-                    Tournament Admin
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => enter('/admin/players')}
+                        className="bg-blue-950 hover:bg-blue-900 border border-blue-900 text-blue-400 font-semibold text-sm px-4 py-2 rounded-xl transition-colors">
+                        Players
+                    </button>
+                    <button
+                        onClick={() => enter('/admin/login')}
+                        className="bg-red-950 hover:bg-red-900 border border-red-900 text-red-400 font-semibold text-sm px-4 py-2 rounded-xl transition-colors">
+                        Tournament Admin
+                    </button>
+                </div>
             </div>
 
             {/* Main content */}
             <div className="flex-1 flex flex-col items-center justify-center p-6 gap-8 animate-slide-up">
                 <div className="text-center">
                     <h1 className="text-4xl font-bold text-white tracking-tight">Silcher Dart Scorer</h1>
+                    <p className="text-xs text-gray-600 mt-1">v{__APP_VERSION__}</p>
                 </div>
 
                 <div className="flex flex-col gap-3 w-full max-w-xs">

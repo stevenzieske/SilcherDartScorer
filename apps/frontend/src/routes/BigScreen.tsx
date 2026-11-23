@@ -14,16 +14,7 @@ export default function BigScreen() {
     const [upcomingMatches, setUpcomingMatches] = useState<Match[]>([])
     const [matchStates, setMatchStates] = useState<Record<string, MatchState>>({})
     const [inProgressByMatch, setInProgressByMatch] = useState<Record<string, DartInProgressData>>({})
-    const [networkUrl, setNetworkUrl] = useState(window.location.origin)
-
-    useEffect(() => {
-        http.get<{ ip: string | null }>('/network-ip').then(r => {
-            if (r.data.ip) {
-                const port = window.location.port || '5173'
-                setNetworkUrl(`http://${r.data.ip}:${port}`)
-            }
-        }).catch(() => {})
-    }, [])
+    const networkUrl = 'http://darts.local'
 
     useEffect(() => {
         http.get<Tournament[]>('/tournaments').then(r => {
@@ -145,7 +136,7 @@ export default function BigScreen() {
                                     const turnStartRem = inProg?.remainingBefore ?? (state?.currentLeg.remaining[currentIdx] ?? 0)
                                     const thrown = inProg?.dartsThrown.map(d => d.notation) ?? []
                                     const currentRem = inProg?.runningRemaining ?? (state?.currentLeg.remaining[currentIdx] ?? 0)
-                                    const checkout = buildCheckoutDisplay(turnStartRem, thrown, currentRem)
+                                    const checkout = buildCheckoutDisplay(turnStartRem, thrown, currentRem, state?.rules.doubleOut ?? true)
 
                                     return (
                                         <div key={m._id} className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
@@ -234,20 +225,27 @@ export default function BigScreen() {
                                     <th className="text-center pb-2">P</th>
                                     <th className="text-center pb-2">W</th>
                                     <th className="text-center pb-2">L</th>
+                                    <th className="text-center pb-2">LD</th>
                                     <th className="text-center pb-2">Pts</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {standings.map((s, i) => (
-                                    <tr key={s.playerId} className="border-t border-gray-800">
-                                        <td className="py-2 text-gray-500">{i + 1}</td>
-                                        <td className="py-2 font-medium">{getName(s.playerId)}</td>
-                                        <td className="py-2 text-center text-gray-400">{s.played}</td>
-                                        <td className="py-2 text-center text-green-400">{s.won}</td>
-                                        <td className="py-2 text-center text-red-400">{s.lost}</td>
-                                        <td className="py-2 text-center font-bold">{s.points}</td>
-                                    </tr>
-                                ))}
+                                {standings.map((s, i) => {
+                                    const ld = s.legDifference ?? 0
+                                    return (
+                                        <tr key={s.playerId} className="border-t border-gray-800">
+                                            <td className="py-2 text-gray-500">{i + 1}</td>
+                                            <td className="py-2 font-medium">{getName(s.playerId)}</td>
+                                            <td className="py-2 text-center text-gray-400">{s.played}</td>
+                                            <td className="py-2 text-center text-green-400">{s.won}</td>
+                                            <td className="py-2 text-center text-red-400">{s.lost}</td>
+                                            <td className={`py-2 text-center text-xs ${ld > 0 ? 'text-green-400' : ld < 0 ? 'text-red-400' : 'text-gray-500'}`}>
+                                                {ld > 0 ? `+${ld}` : ld}
+                                            </td>
+                                            <td className="py-2 text-center font-bold">{s.points}</td>
+                                        </tr>
+                                    )
+                                })}
                             </tbody>
                         </table>
                     )}

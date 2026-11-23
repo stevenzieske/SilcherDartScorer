@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import http from '../../api/client'
 import type { Player } from '@dart/shared'
 import BackButton from '../../components/ui/BackButton'
+import CreatePlayerModal from '../../components/ui/CreatePlayerModal'
 
 function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
     return (
@@ -29,10 +30,17 @@ export default function TournamentNew() {
     const [groupLegsToWin, setGroupLegsToWin] = useState('2')
     const [knockoutLegsToWin, setKnockoutLegsToWin] = useState('3')
     const [error, setError] = useState('')
+    const [showCreatePlayer, setShowCreatePlayer] = useState(false)
 
     useEffect(() => {
         http.get<Player[]>('/players').then(r => setPlayers(r.data))
     }, [])
+
+    function onPlayerCreated(player: Player) {
+        setPlayers(prev => [...prev, player])
+        setSelectedIds(prev => [...prev, player._id])
+        setShowCreatePlayer(false)
+    }
 
     function togglePlayer(id: string) {
         setSelectedIds(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id])
@@ -187,9 +195,17 @@ export default function TournamentNew() {
 
                     {/* Player selection */}
                     <div>
-                        <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
-                            Players <span className="text-gray-400 normal-case">({selectedIds.length} selected)</span>
-                        </p>
+                        <div className="flex items-center justify-between mb-3">
+                            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                                Players <span className="text-gray-400 normal-case">({selectedIds.length} selected)</span>
+                            </p>
+                            <button
+                                type="button"
+                                onClick={() => setShowCreatePlayer(true)}
+                                className="text-xs text-gray-400 hover:text-white transition-colors">
+                                + New Player
+                            </button>
+                        </div>
                         <div className="flex flex-col gap-2 max-h-60 overflow-y-auto">
                             {players.map(p => (
                                 <div key={p._id} onClick={() => togglePlayer(p._id)}
@@ -220,6 +236,12 @@ export default function TournamentNew() {
                     </div>
                 </div>
             </div>
+            {showCreatePlayer && (
+                <CreatePlayerModal
+                    onClose={() => setShowCreatePlayer(false)}
+                    onCreated={onPlayerCreated}
+                />
+            )}
         </div>
     )
 }

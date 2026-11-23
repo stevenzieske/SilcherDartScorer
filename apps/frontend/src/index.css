@@ -31,3 +31,80 @@ html, body {
 .animate-slide-up { animation: slide-up 0.25s ease-out both; }
 .animate-scale-in { animation: scale-in 0.18s ease-out both; }
 .animate-pop      { animation: pop      0.15s ease-out both; }
+
+/* ── Light mode ───────────────────────────────────────────────────────────────
+   Pattern: gray-200 page → white cards → gray-100 inputs.
+   Primary buttons (bg-white) invert to dark so they stand out on white cards.
+   ──────────────────────────────────────────────────────────────────────────── */
+html.light,
+html.light body { background-color: #e5e7eb !important; } /* gray-200 — clearly gray page */
+
+/* Backgrounds: page / card / input / subtle */
+html.light .bg-gray-950     { background-color: #e5e7eb !important; } /* gray-200 — page   */
+html.light .bg-gray-900     { background-color: #ffffff !important; } /* white    — cards  */
+html.light .bg-gray-800     { background-color: #f3f4f6 !important; } /* gray-100 — inputs */
+html.light .bg-gray-700     { background-color: #e5e7eb !important; } /* gray-200 — subtle */
+html.light .bg-gray-950\/95 { background-color: rgba(255,255,255,0.97) !important; }
+
+/* Primary buttons: invert so they're visible on white cards */
+html.light .bg-white              { background-color: #111827 !important; } /* gray-900 */
+html.light .text-gray-950         { color: #ffffff !important; }
+html.light .border-white          { border-color: #111827 !important; }
+html.light .hover\:bg-gray-100:hover { background-color: #1f2937 !important; } /* gray-800 */
+html.light .hover\:bg-gray-200:hover { background-color: #1f2937 !important; } /* gray-800 */
+
+/* Text */
+html.light .text-white    { color: #030712 !important; } /* gray-950 */
+html.light .text-gray-300 { color: #374151 !important; } /* gray-700 */
+html.light .text-gray-400 { color: #4b5563 !important; } /* gray-600 */
+html.light .text-gray-600 { color: #6b7280 !important; } /* gray-500 */
+html.light .text-gray-700 { color: #e5e7eb !important; } /* gray-200 — keeps intentionally invisible separators invisible */
+
+/* Borders — stronger than before */
+html.light .border-gray-800 { border-color: #d1d5db !important; } /* gray-300 */
+html.light .border-gray-700 { border-color: #9ca3af !important; } /* gray-400 */
+html.light .border-gray-600 { border-color: #6b7280 !important; } /* gray-500 */
+
+/* Dividers */
+html.light .divide-gray-800 > :not([hidden]) ~ :not([hidden]) { border-color: #d1d5db !important; }
+
+/* Hover backgrounds */
+html.light .hover\:bg-gray-800:hover { background-color: #f3f4f6 !important; } /* tint on white card */
+html.light .hover\:bg-gray-900:hover { background-color: #f9fafb !important; } /* lighten on gray page */
+html.light .hover\:bg-gray-700:hover { background-color: #e5e7eb !important; }
+
+/* Hover borders */
+html.light .hover\:border-gray-700:hover { border-color: #9ca3af !important; }
+html.light .hover\:border-gray-500:hover { border-color: #6b7280 !important; }
+
+/* Hover text */
+html.light .hover\:text-white:hover { color: #030712 !important; }
+
+/* Blue accent (Players button) */
+html.light .bg-blue-950              { background-color: #dbeafe !important; } /* blue-100 */
+html.light .hover\:bg-blue-900:hover { background-color: #bfdbfe !important; } /* blue-200 */
+html.light .border-blue-900          { border-color:     #93c5fd !important; } /* blue-300 */
+html.light .text-blue-400            { color:            #1d4ed8 !important; } /* blue-700 */
+
+/* Red accent (Admin/undo button) */
+html.light .bg-red-950              { background-color: #fee2e2 !important; } /* red-100 */
+html.light .hover\:bg-red-900:hover { background-color: #fecaca !important; } /* red-200 */
+html.light .border-red-900          { border-color:     #fca5a5 !important; } /* red-300 */
+html.light .text-red-400            { color:            #dc2626 !important; } /* red-600 */
+
+/* Amber (Double In badge) */
+html.light .bg-amber-950\/60 { background-color: rgba(254,243,199,0.9) !important; }
+html.light .text-amber-500   { color: #b45309 !important; } /* amber-700 */
+html.light .text-amber-600   { color: #92400e !important; } /* amber-800 */
+
+/* Green (checkout bar, leg difference) */
+html.light .bg-green-950   { background-color: #dcfce7 !important; } /* green-100 */
+html.light .bg-green-900   { background-color: #bbf7d0 !important; } /* green-200 */
+html.light .text-green-300 { color: #15803d !important; }             /* green-700 */
+html.light .text-green-400 { color: #16a34a !important; }             /* green-600 */
+html.light .text-green-500 { color: #16a34a !important; }             /* green-600 */
+html.light .text-green-700 { color: #14532d !important; }             /* green-900 */
+
+/* Yellow/amber ranking and win-screen colours */
+html.light .text-yellow-400 { color: #a16207 !important; } /* yellow-700 */
+html.light .text-yellow-500 { color: #a16207 !important; } /* yellow-700 */

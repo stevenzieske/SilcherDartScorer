@@ -13,6 +13,8 @@ interface PlayerStats {
     checkoutAttempts: number
     checkoutHits: number
     oneEighties: number
+    hundredPlus: number
+    hundredFortyPlus: number
     highestCheckout: number
     bestLegDarts: number
     average: number
@@ -30,6 +32,7 @@ interface TournamentHistoryEntry {
     average: number
     highestCheckout: number
     date: string
+    isQuickMatch: boolean
 }
 
 interface PlayerStatsResponse {
@@ -107,6 +110,8 @@ export default function PlayerStatsPage() {
                     <StatCard label="Highest CO" value={stats.highestCheckout || '—'} />
                     <StatCard label="CO Rate" value={stats.checkoutAttempts > 0 ? `${stats.checkoutRate}%` : '—'} />
                     <StatCard label="180s" value={stats.oneEighties} />
+                    <StatCard label="100+ turns" value={stats.hundredPlus ?? 0} />
+                    <StatCard label="140+ turns" value={stats.hundredFortyPlus ?? 0} />
                     <StatCard
                         label="Best leg"
                         value={stats.bestLegDarts || '—'}
@@ -119,17 +124,22 @@ export default function PlayerStatsPage() {
                     />
                 </div>
 
-                {/* Tournament history */}
-                <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Tournament History</p>
+                {/* Match history */}
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Match History</p>
                 {tournamentHistory.length === 0 ? (
-                    <p className="text-gray-600 text-sm">No completed tournaments</p>
+                    <p className="text-gray-600 text-sm">No completed matches</p>
                 ) : (
                     <div className="flex flex-col gap-2">
                         {tournamentHistory.map(t => (
                             <div key={t.tournamentId} className="bg-gray-900 border border-gray-800 rounded-2xl px-4 py-3">
                                 <div className="flex items-start justify-between gap-2 mb-2">
-                                    <p className="font-semibold text-sm">{t.tournamentName}</p>
-                                    {t.placement && (
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <p className="font-semibold text-sm truncate">{t.tournamentName}</p>
+                                        {t.isQuickMatch && (
+                                            <span className="text-xs text-blue-400 bg-blue-950/50 border border-blue-900/50 px-1.5 py-0.5 rounded-full shrink-0">Quick</span>
+                                        )}
+                                    </div>
+                                    {!t.isQuickMatch && t.placement && (
                                         <span className="text-xs font-bold text-yellow-400 shrink-0">{placement(t.placement)}</span>
                                     )}
                                 </div>

@@ -27,3 +27,4 @@ __exportStar(require("./dto/submit-throw.dto"), exports);
 __exportStar(require("./socket-events"), exports);
 __exportStar(require("./errors"), exports);
 __exportStar(require("./checkout-table"), exports);
+__exportStar(require("./match-utils"), exports);

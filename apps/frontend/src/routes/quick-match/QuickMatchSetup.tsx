@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import http from '../../api/client'
 import type { Match, Player } from '@dart/shared'
 import BackButton from '../../components/ui/BackButton'
+import CreatePlayerModal from '../../components/ui/CreatePlayerModal'
 
 type Step = 'players' | 'settings' | 'order'
 
@@ -55,6 +56,7 @@ export default function QuickMatchSetup() {
     const [orderedPlayers, setOrderedPlayers] = useState<Player[]>([])
     const [submitting, setSubmitting] = useState(false)
     const [error, setError] = useState('')
+    const [showCreatePlayer, setShowCreatePlayer] = useState(false)
 
     useEffect(() => {
         http.get<Player[]>('/players')
@@ -66,6 +68,12 @@ export default function QuickMatchSetup() {
         setSelectedIds(prev =>
             prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
         )
+    }
+
+    function onPlayerCreated(player: Player) {
+        setAllPlayers(prev => [...prev, player])
+        setSelectedIds(prev => [...prev, player._id])
+        setShowCreatePlayer(false)
     }
 
     function proceedToSettings() {
@@ -138,8 +146,13 @@ export default function QuickMatchSetup() {
                 </div>
 
                 <div className="flex-1 p-4 flex flex-col gap-3 overflow-y-auto">
+                    <button
+                        onClick={() => setShowCreatePlayer(true)}
+                        className="w-full bg-gray-900 hover:bg-gray-800 border border-dashed border-gray-700 hover:border-gray-500 text-gray-400 hover:text-white font-medium py-3 rounded-2xl text-sm transition-colors">
+                        + New Player
+                    </button>
                     {allPlayers.length === 0 ? (
-                        <p className="text-gray-500 text-sm text-center mt-4">Loading players…</p>
+                        <p className="text-gray-500 text-sm text-center mt-4">No players yet — create one above</p>
                     ) : (
                         allPlayers.map(player => {
                             const selected = selectedIds.includes(player._id)
@@ -176,6 +189,12 @@ export default function QuickMatchSetup() {
                         Continue ({selectedIds.length} selected)
                     </button>
                 </div>
+                {showCreatePlayer && (
+                    <CreatePlayerModal
+                        onClose={() => setShowCreatePlayer(false)}
+                        onCreated={onPlayerCreated}
+                    />
+                )}
             </div>
         )
     }

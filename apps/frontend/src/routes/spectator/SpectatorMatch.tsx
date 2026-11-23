@@ -93,7 +93,7 @@ export default function SpectatorMatch() {
     const turnStartRemaining = inProgress?.remainingBefore ?? (leg?.remaining[currentPlayerIndex] ?? 0)
     const thrownNotations = inProgress?.dartsThrown.map(d => d.notation) ?? []
     const currentRemaining = inProgress?.runningRemaining ?? (leg?.remaining[currentPlayerIndex] ?? 0)
-    const checkoutDisplay = buildCheckoutDisplay(turnStartRemaining, thrownNotations, currentRemaining)
+    const checkoutDisplay = buildCheckoutDisplay(turnStartRemaining, thrownNotations, currentRemaining, matchState?.rules.doubleOut ?? true)
 
     return (
         <div className="h-[100dvh] overflow-hidden bg-gray-950 text-white flex flex-col">

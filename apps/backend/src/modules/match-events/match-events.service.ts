@@ -19,6 +19,14 @@ export class MatchEventsService {
             .exec()
     }
 
+    findAllForMatches(matchIds: string[]): Promise<MatchEventDocument[]> {
+        if (matchIds.length === 0) return Promise.resolve([])
+        return this.eventModel
+            .find({ matchId: { $in: matchIds } })
+            .sort({ matchId: 1, sequence: 1 })
+            .exec()
+    }
+
     async nextSequence(matchId: string): Promise<number> {
         const last = await this.eventModel
             .findOne({ matchId })

@@ -27,6 +27,9 @@ export function isDoubleOrBull(
 }
 
 export function computeTurn(playerId: string, leg: LegState, darts: DartThrow[], rules: MatchRules): TurnData {
+    if (darts.length === 0) {
+        throw new Error('computeTurn requires at least one dart')
+    }
 
     const remainingBefore = leg.remaining[leg.currentPlayerIndex];
 

@@ -21,7 +21,10 @@ export function parseNotation(notation: string): number {
     }
 
     const number = parseInt(valueString, 10)
-    if (number === 25) return 25
+    if (number === 25) {
+        if (multiplierString) throw new ParseError(notation)
+        return 25
+    }
     if (number < 1 || number > 20) throw new ParseError(notation)
 
     const multiplier = multiplierString === 'T' ? 3 : multiplierString === 'D' ? 2 : 1

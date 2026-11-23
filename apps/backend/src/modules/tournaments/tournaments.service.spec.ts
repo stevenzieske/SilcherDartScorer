@@ -1,6 +1,7 @@
 import { Test } from '@nestjs/testing'
 import { getModelToken } from '@nestjs/mongoose'
 import { BadRequestException, NotFoundException } from '@nestjs/common'
+import { EventEmitter2 } from '@nestjs/event-emitter'
 import { TournamentsService } from './tournaments.service'
 import { TournamentModel } from './tournament.schema'
 import { MatchesService } from '../matches/matches.service'
@@ -16,8 +17,9 @@ function makeMockTournament(overrides: Record<string, unknown> = {}) {
         name: 'Test Tournament',
         status: TournamentStatus.Draft,
         players: ['p1', 'p2', 'p3', 'p4'],
-        leagueRounds: [],
-        standings: [],
+        leagueRounds: [] as any[],
+        standings: [] as any[],
+        startedAt: undefined as string | undefined,
         rules: {
             startingScore: 501,
             doubleIn: false,
@@ -42,7 +44,7 @@ describe('TournamentsService', () => {
     let mockFindById: jest.Mock
     let mockFindByIdAndDelete: jest.Mock
     let mockFind: jest.Mock
-    let mockMatchesService: { create: jest.Mock }
+    let mockMatchesService: { create: jest.Mock; deleteAllForTournament: jest.Mock }
 
     beforeEach(async () => {
         matchCounter = 0
@@ -54,6 +56,7 @@ describe('TournamentsService', () => {
                 matchCounter++
                 return Promise.resolve({ _id: { toString: () => `match${matchCounter}` } })
             }),
+            deleteAllForTournament: jest.fn().mockResolvedValue(undefined),
         }
 
         const MockModel = jest.fn().mockImplementation((data) => {
@@ -71,6 +74,7 @@ describe('TournamentsService', () => {
                 TournamentsService,
                 { provide: getModelToken(TournamentModel.name), useValue: MockModel },
                 { provide: MatchesService, useValue: mockMatchesService },
+                { provide: EventEmitter2, useValue: { emit: jest.fn() } },
             ],
         }).compile()
 
@@ -174,10 +178,12 @@ describe('TournamentsService', () => {
             expect(mockFindByIdAndDelete).toHaveBeenCalledWith('tour1')
         })
 
-        it('throws BadRequestException if tournament is not in Draft status', async () => {
+        it('calls deleteAllForTournament before removing the document', async () => {
             const tournament = makeMockTournament({ status: TournamentStatus.Active })
             mockFindById.mockReturnValue({ exec: jest.fn().mockResolvedValue(tournament) })
-            await expect(service.delete('tour1')).rejects.toThrow(BadRequestException)
+            mockFindByIdAndDelete.mockReturnValue({ exec: jest.fn().mockResolvedValue(tournament) })
+            await service.delete('tour1')
+            expect(mockMatchesService.deleteAllForTournament).toHaveBeenCalledWith('tour1')
         })
     })
 })

@@ -4,7 +4,7 @@ import http from '../../api/client'
 import { useMatchStore } from '../../stores/match.store'
 import { useMatchSocket } from '../../socket/useMatchSocket'
 import { socket } from '../../socket/socket.client'
-import { EVENTS, buildCheckoutDisplay } from '@dart/shared'
+import { EVENTS, buildCheckoutDisplay, scoreFromNotation, isDoubleNotation, isTurnTerminal as isTurnTerminalShared } from '@dart/shared'
 import type { Match, TurnData } from '@dart/shared'
 import BackButton from '../../components/ui/BackButton'
 import { usePlayers } from '../../hooks/usePlayers'
@@ -14,31 +14,6 @@ type Modifier = 'Double' | 'Triple'
 
 const VALUES = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
 
-function scoreFromNotation(n: string): number {
-    if (n === 'MISS') return 0
-    if (n === 'BULL') return 50
-    if (n === '25') return 25
-    if (n.startsWith('D')) return parseInt(n.slice(1)) * 2
-    if (n.startsWith('T')) return parseInt(n.slice(1)) * 3
-    return parseInt(n)
-}
-
-function isDouble(n: string): boolean {
-    return n.startsWith('D') || n === 'BULL'
-}
-
-function isTurnTerminal(darts: string[], startRemaining: number, doubleOut: boolean): boolean {
-    if (darts.length === 3) return true
-    let rem = startRemaining
-    for (const d of darts) {
-        const next = rem - scoreFromNotation(d)
-        const bust = next < 0 || (doubleOut && next === 1) || (doubleOut && next === 0 && !isDouble(d))
-        const checkout = next === 0 && (!doubleOut || isDouble(d))
-        if (bust || checkout) return true
-        rem = next
-    }
-    return false
-}
 
 function calcAverage(playerId: string, turns: TurnData[]): string {
     const mine = turns.filter(t => t.playerId === playerId)
@@ -85,6 +60,7 @@ export default function JudgeMatch() {
     const currentPlayerIndex = leg?.currentPlayerIndex ?? 0
     const currentPlayerId = match?.players[currentPlayerIndex] ?? ''
     const remaining = leg?.remaining[currentPlayerIndex] ?? 0
+    const doubleIn = matchState?.rules.doubleIn ?? false
     const doubleOut = matchState?.rules.doubleOut ?? true
     const setsToWin = matchState?.rules.setsToWin ?? 0
 
@@ -128,7 +104,7 @@ export default function JudgeMatch() {
         socket.emit(EVENTS.DART_THROWN, { matchId: id!, darts: dartObjects, playerId: currentPlayerId, remainingBefore: remaining })
         setPendingDarts(newDarts)
         setModifier(null)
-        if (isTurnTerminal(newDarts, remaining, doubleOut)) {
+        if (isTurnTerminalShared(newDarts, remaining, doubleOut, doubleIn, matchState?.rules.startingScore ?? 501)) {
             submitTurn(newDarts)
         }
     }
@@ -161,16 +137,28 @@ export default function JudgeMatch() {
     const turns = leg?.turns ?? []
     const disabled = pendingDarts.length >= 3 || submitting
 
+    const startingScore = matchState?.rules.startingScore ?? 501
+
     // inProgress from another judge — use it only when this judge hasn't started entering darts
     const hasInProgress = !!inProgress && pendingDarts.length === 0
     const displayDarts = hasInProgress
         ? inProgress!.dartsThrown.map(d => d.notation)
         : pendingDarts
+
+    // When doubleIn is active and the player hasn't doubled in yet (remaining === startingScore),
+    // darts before the first double score 0 — don't subtract their face value from the display.
     const liveRemaining = hasInProgress
         ? inProgress!.runningRemaining
-        : pendingDarts.reduce((rem, n) => rem - scoreFromNotation(n), remaining)
+        : (() => {
+            if (doubleIn && remaining === startingScore) {
+                const firstDoubleIdx = pendingDarts.findIndex(n => isDoubleNotation(n))
+                if (firstDoubleIdx === -1) return remaining
+                return pendingDarts.slice(firstDoubleIdx).reduce((rem, n) => rem - scoreFromNotation(n), remaining)
+            }
+            return pendingDarts.reduce((rem, n) => rem - scoreFromNotation(n), remaining)
+        })()
 
-    const checkoutHint = buildCheckoutDisplay(remaining, displayDarts, liveRemaining)
+    const checkoutHint = buildCheckoutDisplay(remaining, displayDarts, liveRemaining, doubleOut)
 
     // Bull button: 25 normally, DBULL (50) when Double active
     const bullNotation = modifier === 'Double' ? 'BULL' : '25'
@@ -240,9 +228,17 @@ export default function JudgeMatch() {
                     })}
                 </div>
                 </div>
-                <p className="text-center text-xs text-gray-500 mt-3">
-                    Leg {leg?.legNumber ?? 1} · {getName(currentPlayerId)}'s turn
-                </p>
+                <div className="flex items-center justify-center gap-3 mt-3">
+                    {match.board != null && (
+                        <span className="text-xs text-gray-500">Board {match.board}</span>
+                    )}
+                    <p className="text-xs text-gray-500">
+                        Leg {leg?.legNumber ?? 1} · {getName(currentPlayerId)}'s turn
+                    </p>
+                    {doubleIn && remaining === startingScore && (
+                        <span className="text-xs font-semibold text-amber-500 bg-amber-950/60 px-2 py-0.5 rounded-full">Double In</span>
+                    )}
+                </div>
             </div>
 
             {/* Checkout hint */}

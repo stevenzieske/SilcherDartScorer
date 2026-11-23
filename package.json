@@ -1,6 +1,10 @@
 {
   "name": "silcher-dart-scorer",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "private": true,
-  "packageManager": "pnpm@9.0.0"
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "dev": "pnpm --filter backend start:dev & pnpm --filter frontend dev & node --no-deprecation apps/proxy/index.js",
+    "start": "docker compose up -d && node --no-deprecation apps/proxy/register-mdns.js; docker compose down"
+  }
 }

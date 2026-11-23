@@ -18,7 +18,6 @@ export class PlayersController {
     }
 
     @Post()
-    @UseGuards(AdminGuard)
     create(@Body() body: CreatePlayerDto) {
         return this.playersService.create(body)
     }
